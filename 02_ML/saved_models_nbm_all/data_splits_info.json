@@ -1,0 +1,20 @@
+{
+  "total_sequences": 1200,
+  "windows_per_farm": 400,
+  "farms_included": [
+    "Wind Farm A",
+    "Wind Farm B",
+    "Wind Farm C"
+  ],
+  "window_size_steps": 288,
+  "window_duration_hours": 48,
+  "input_features": [
+    "power_kw",
+    "wind_speed",
+    "ambient_temp",
+    "gen_rpm",
+    "rotor_rpm",
+    "pitch_angle"
+  ],
+  "target_column": "bearing_temp"
+}

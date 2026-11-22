@@ -1,0 +1,6 @@
+Model,Raw Residual Threshold (°C),CUSUM Threshold,CUSUM k,Precision,Recall (Detection Rate),F1-Score,Residual PR-AUC,Residual ROC-AUC,CUSUM PR-AUC,CUSUM ROC-AUC,False Alarm Rate,False Alarm Episodes,Detected Failure,Early Detection,Signed Lead Time (Hours),Training Time (s)
+LSTM,4.39,15.39,1.2,0.0,0.0,0.0,0.0161,0.7852,0.0076,0.5423,0.5423,2,False,False,,813.0
+TCN,3.91,15.33,1.35,0.0,0.0,0.0,0.0154,0.7746,0.0072,0.5176,0.6197,2,False,False,,219.5
+XGBoost,6.03,17.73,1.75,0.0,0.0,0.0,0.0052,0.331,0.0035,0.2007,0.5986,2,False,False,,0.6
+GRU,4.25,14.63,1.44,0.0,0.0,0.0,0.007,0.5,0.0035,0.2799,0.5282,2,False,False,,1256.1
+Transformer,4.58,10.06,2.34,0.0,0.0,0.0,0.0147,0.7641,0.0035,0.4437,0.0,0,False,False,,1300.5

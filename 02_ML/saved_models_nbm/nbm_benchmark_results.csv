@@ -1,0 +1,6 @@
+Model,Calibrated Threshold (°C),Precision,Recall (Detection Rate),F1-Score,PR-AUC,False Alarm Rate,Lead Time Earliness (Hours),Training Time (s)
+XGBoost,9.17,0.0,0.0,0.0,0.3728,0.7037,0.0,0.6
+LSTM,6.41,0.0,0.0,0.0,0.8321,0.4741,0.0,813.0
+GRU,6.5,0.0,0.0,0.0,0.5852,0.484,0.0,1256.1
+TCN,8.81,0.0,0.0,0.0,0.8173,0.5704,0.0,219.5
+Transformer,4.08,0.0,0.0,0.0,0.7827,0.2099,0.0,1300.5

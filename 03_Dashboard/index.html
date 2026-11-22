@@ -1,0 +1,2082 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AeroPulse | Industrial Turbine Analytics & Predictive Health</title>
+  
+  <!-- Inter & JetBrains Mono Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  
+  <!-- Tailwind CSS, Chart.js, Three.js & Lucide Icons -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+  <!-- 2D High-Definition Vector Engine (Zero External 3D Dependencies) -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"Inter"', 'system-ui', '-apple-system', 'sans-serif'],
+            mono: ['"JetBrains Mono"', 'monospace'],
+          },
+          colors: {
+            brand: {
+              DEFAULT: '#2563eb',
+              hover: '#1d4ed8',
+              light: '#eff6ff',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  
+  <style>
+    body {
+      background-color: #f8fafc;
+      color: #0f172a;
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    }
+    .panel {
+      background-color: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 0.75rem;
+      box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05);
+    }
+    .panel-subtle {
+      background-color: #f8fafc;
+      border: 1px solid #e2e8f0;
+    }
+    .chart-container-main {
+      position: relative;
+      height: 300px;
+      width: 100%;
+    }
+    .chart-container-sm {
+      position: relative;
+      height: 220px;
+      width: 100%;
+    }
+    @keyframes emergency-pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.9; transform: scale(1.02); }
+    }
+    .animate-emergency {
+      animation: emergency-pulse 2s infinite ease-in-out;
+    }
+    .nacelle-part {
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    .nacelle-part:hover {
+      filter: brightness(1.15);
+      stroke: #2563eb !important;
+      stroke-width: 2.5 !important;
+    }
+    .nacelle-part-active {
+      stroke: #2563eb !important;
+      stroke-width: 3 !important;
+      filter: drop-shadow(0 0 6px rgba(37, 99, 235, 0.4));
+    }
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #f1f5f9; }
+    ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+      /* SVG Turbine Spin */
+    @keyframes turbine-rotate {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+    .spin-blade {
+      transform-origin: 100px 90px;
+      will-change: transform;
+    }
+</style>
+</head>
+<body class="min-h-screen flex flex-col antialiased selection:bg-blue-600 selection:text-white">
+
+  <!-- ============================================================== -->
+  <!-- TOP NAVIGATION HEADER                                          -->
+  <!-- ============================================================== -->
+  <header class="bg-white border-b border-slate-200 sticky top-0 z-50 px-6 py-3.5 shadow-sm">
+    <div class="max-w-7xl mx-auto flex items-center justify-between">
+      
+      <!-- Brand & Project Title -->
+      <div class="flex items-center gap-3">
+        <div class="w-9 h-9 rounded-lg bg-blue-600 flex items-center justify-center text-white font-bold shadow-sm">
+          <i data-lucide="activity" class="w-5 h-5"></i>
+        </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <span class="text-base font-semibold tracking-tight text-slate-900">AeroPulse</span>
+            <span class="text-xs text-slate-500 font-normal">| Predictive Turbine Analytics</span>
+            <span class="text-[10px] uppercase font-semibold tracking-wider px-2 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200 font-bold">3D WebGL Enabled</span>
+          </div>
+          <p class="text-xs text-slate-500">Wind Farm A &bull; Asset #0 &bull; Generator Drive-End Bearing (<span class="font-mono text-slate-700 font-medium">sensor_13_avg</span>)</p>
+        </div>
+      </div>
+
+      <!-- Live Machine Status Pill -->
+      <div class="flex items-center gap-3">
+        <div id="status-pill" class="flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold border bg-emerald-50 text-emerald-700 border-emerald-200">
+          <span id="status-dot" class="w-2 h-2 rounded-full bg-emerald-500"></span>
+          <span id="status-text">SYSTEM NORMAL &bull; WITHIN PHYSICAL TOLERANCE</span>
+        </div>
+
+        <div class="h-5 w-[1px] bg-slate-200 hidden sm:block"></div>
+
+        <button onclick="exportCSV()" class="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-300 transition shadow-sm">
+          <i data-lucide="download" class="w-3.5 h-3.5 text-slate-500"></i>
+          <span>Export Data</span>
+        </button>
+      </div>
+
+    </div>
+  </header>
+
+  <!-- ============================================================== -->
+  <!-- TAB NAVIGATION BAR                                             -->
+  <!-- ============================================================== -->
+  <div class="bg-slate-100/70 border-b border-slate-200 px-6 py-2">
+    <div class="max-w-7xl mx-auto flex items-center justify-between">
+      <nav class="flex items-center gap-2">
+        <button onclick="setTab('dashboard')" id="nav-dashboard" class="tab-btn px-3 py-1.5 rounded-md text-xs font-semibold bg-blue-600 text-white shadow-sm flex items-center gap-1.5 transition">
+          <i data-lucide="box" class="w-3.5 h-3.5"></i>
+          <span>Live 3D Digital Twin</span>
+        </button>
+        <button onclick="setTab('xray')" id="nav-xray" class="tab-btn px-3 py-1.5 rounded-md text-xs font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-200/60 flex items-center gap-1.5 transition">
+          <i data-lucide="scan" class="w-3.5 h-3.5 text-blue-600"></i>
+          <span>Nacelle X-Ray</span>
+        </button>
+        <button onclick="setTab('custom-builder')" id="nav-custom-builder" class="tab-btn px-3 py-1.5 rounded-md text-xs font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-200/60 flex items-center gap-1.5 transition">
+          <i data-lucide="wrench" class="w-3.5 h-3.5 text-slate-500"></i>
+          <span>Custom Scenario Lab</span>
+        </button>
+        <button onclick="setTab('simulator')" id="nav-simulator" class="tab-btn px-3 py-1.5 rounded-md text-xs font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-200/60 flex items-center gap-1.5 transition">
+          <i data-lucide="sliders" class="w-3.5 h-3.5 text-slate-500"></i>
+          <span>AI Twin Sandbox</span>
+        </button>
+        <button onclick="setTab('leaderboard')" id="nav-leaderboard" class="tab-btn px-3 py-1.5 rounded-md text-xs font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-200/60 flex items-center gap-1.5 transition">
+          <i data-lucide="bar-chart-2" class="w-3.5 h-3.5"></i>
+          <span>Leaderboard</span>
+        </button>
+        <button onclick="setTab('diagnosis')" id="nav-diagnosis" class="tab-btn px-3 py-1.5 rounded-md text-xs font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-200/60 flex items-center gap-1.5 transition">
+          <i data-lucide="clipboard-check" class="w-3.5 h-3.5"></i>
+          <span>Diagnostics</span>
+        </button>
+      </nav>
+
+      <div class="hidden md:flex items-center gap-4 text-xs text-slate-500 font-mono">
+        <span>Active Model: <strong class="text-blue-600 font-semibold" id="top-active-model">GRU Regressor</strong></span>
+        <span>|</span>
+        <span>Sampling: 10-Min SCADA</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================================== -->
+  <!-- MAIN WORKSPACE CONTENT                                         -->
+  <!-- ============================================================== -->
+  <main class="max-w-7xl mx-auto w-full px-6 py-6 flex-1 space-y-6">
+
+    <!-- ============================================================ -->
+    <!-- TAB 1: LIVE 3D OPERATIONS DASHBOARD                          -->
+    <!-- ============================================================ -->
+    <section id="view-dashboard" class="tab-view space-y-5">
+      
+      <!-- CONTROLS & STREAM SWITCHER -->
+      <div class="panel p-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
+        
+        <!-- Scenario Switcher -->
+        <div class="flex flex-wrap items-center gap-3">
+          <span class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Active Scenario:</span>
+          <div id="scenario-selector-group" class="inline-flex flex-wrap rounded-lg p-1 bg-slate-100 border border-slate-200 gap-1">
+            <button id="btn-stream-event_0_failure" onclick="changeStream('event_0_failure')" class="scenario-btn px-3 py-1.5 rounded text-xs font-semibold transition flex items-center gap-1.5 bg-rose-50 text-rose-700 border border-rose-300 shadow-sm">
+              <span class="w-2 h-2 rounded-full bg-rose-500"></span>
+              <span>Event 0: Bearing Failure</span>
+            </button>
+            <button id="btn-stream-event_24_normal" onclick="changeStream('event_24_normal')" class="scenario-btn px-3 py-1.5 rounded text-xs font-medium transition flex items-center gap-1.5 text-slate-600 hover:text-slate-900">
+              <i data-lucide="check" class="w-3.5 h-3.5 text-emerald-600"></i>
+              <span>Event 24: Healthy Baseline</span>
+            </button>
+          </div>
+
+          <button onclick="setTab('custom-builder')" class="px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 flex items-center gap-1 transition">
+            <i data-lucide="plus-circle" class="w-3.5 h-3.5"></i>
+            <span>Create Custom</span>
+          </button>
+        </div>
+
+        <!-- Architecture Switcher -->
+        <div class="flex items-center gap-3">
+          <span class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Architecture:</span>
+          <div class="inline-flex rounded-lg p-1 bg-slate-100 border border-slate-200">
+            <button onclick="changeModel('GRU')" id="btn-model-GRU" class="model-pill px-3 py-1 rounded text-xs font-semibold bg-blue-600 text-white shadow-sm">
+              GRU (Top F1: 0.85)
+            </button>
+            <button onclick="changeModel('LSTM')" id="btn-model-LSTM" class="model-pill px-3 py-1 rounded text-xs font-medium text-slate-600 hover:text-slate-900">
+              LSTM
+            </button>
+            <button onclick="changeModel('Transformer')" id="btn-model-Transformer" class="model-pill px-3 py-1 rounded text-xs font-medium text-slate-600 hover:text-slate-900">
+              Transformer
+            </button>
+            <button onclick="changeModel('XGBoost')" id="btn-model-XGBoost" class="model-pill px-3 py-1 rounded text-xs font-medium text-slate-600 hover:text-slate-900">
+              XGBoost
+            </button>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- 3D WEBGL TWIN & KPI ROW -->
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-5">
+        
+        <!-- Live Interactive 2D Vector Wind Turbine (5 Cols) -->
+        <div class="lg:col-span-4 panel p-5 flex flex-col justify-between space-y-4">
+          <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+            <div>
+              <h3 class="text-xs font-bold text-slate-900 uppercase tracking-wider">Live Twin Subsystem</h3>
+              <p class="text-[11px] text-slate-500" id="current-scenario-badge-label">1.5 MW WTG-04 Drive Train</p>
+            </div>
+            <span id="turbine-spin-badge" class="px-2 py-0.5 rounded text-[10px] font-semibold bg-blue-50 text-blue-700 border border-blue-200">Rotor Spinning</span>
+          </div>
+
+          <!-- SVG Graphic matching user code exactly -->
+          <div class="flex items-center justify-center p-4 bg-slate-50 rounded-xl border border-slate-200/80">
+            <svg class="w-48 h-48 drop-shadow-sm" viewBox="0 0 200 220">
+              <!-- Tower -->
+              <polygon points="90,105 110,105 118,215 82,215" fill="#cbd5e1" stroke="#94a3b8" stroke-width="2"/>
+              <!-- Nacelle Box -->
+              <rect x="75" y="80" width="55" height="25" rx="4" fill="#334155" stroke="#1e293b" stroke-width="2"/>
+              <!-- Hot Bearing Heat Highlight Area -->
+              <circle id="svg-bearing-spot" cx="112" cy="92" r="7" fill="#10b981" stroke="#ffffff" stroke-width="1.5" class="transition-all duration-300"/>
+              <!-- Nacelle Hub -->
+              <circle cx="100" cy="90" r="9" fill="#0f172a"/>
+              <!-- Spinning Blades -->
+              <g id="svg-blades" class="spin-blade">
+                <!-- Blade 1 -->
+                <path d="M100,90 Q92,30 98,10 Q106,30 100,90" fill="#f8fafc" stroke="#94a3b8" stroke-width="1.5"/>
+                <!-- Blade 2 (rotated 120) -->
+                <path d="M100,90 Q150,120 170,140 Q135,145 100,90" fill="#f8fafc" stroke="#94a3b8" stroke-width="1.5"/>
+                <!-- Blade 3 (rotated 240) -->
+                <path d="M100,90 Q50,120 30,140 Q65,145 100,90" fill="#f8fafc" stroke="#94a3b8" stroke-width="1.5"/>
+                <circle cx="100" cy="90" r="5" fill="#3b82f6"/>
+              </g>
+            </svg>
+          </div>
+
+          <!-- Dynamic Inspection Tooltip -->
+          <div class="p-3 bg-white rounded-lg border border-slate-200 text-xs space-y-1.5 shadow-sm">
+            <div class="flex justify-between items-center">
+              <span class="text-slate-500 font-medium">Drive-End Bearing State:</span>
+              <span id="turbine-bearing-state" class="font-bold text-emerald-600">NORMAL THERMAL</span>
+            </div>
+            <div class="flex justify-between items-center text-[11px] font-mono">
+              <span class="text-slate-400">Wind Velocity:</span>
+              <span id="turbine-wind-spd-val" class="text-blue-600 font-semibold">11.5 m/s</span>
+            </div>
+            <div class="flex justify-between items-center text-[11px] font-mono">
+              <span class="text-slate-400">Rotor Angular Speed:</span>
+              <span id="turbine-blade-speed" class="text-slate-900 font-semibold">14.2 RPM</span>
+            </div>
+            <div class="flex justify-between items-center text-[11px] font-mono">
+              <span class="text-slate-400">Thermomechanical Slip:</span>
+              <span id="turbine-slip-val" class="text-slate-700 font-semibold">+0.12 °C</span>
+            </div>
+          </div>
+
+          <div class="flex justify-end pt-0.5">
+            <button onclick="setTab('xray')" class="text-blue-600 hover:text-blue-700 font-semibold flex items-center gap-1 text-[11px]">
+              <span>Internal Cross-Section</span>
+              <i data-lucide="arrow-right" class="w-3 h-3"></i>
+            </button>
+          </div>
+        </div>
+
+        <!-- 6 KPI Metric Cards & Scrubber (7 Cols) -->
+        <div class="lg:col-span-8 flex flex-col justify-between space-y-3.5">
+          
+          <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+            <!-- Tile 1 -->
+            <div class="panel p-3.5">
+              <div class="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Actual Sensor Temp</div>
+              <div class="mt-1 flex items-baseline gap-1">
+                <span id="kpi-actual" class="text-2xl font-bold font-mono text-slate-900">--</span>
+                <span class="text-xs text-slate-500 font-medium">°C</span>
+              </div>
+              <div class="text-[10px] text-slate-400 mt-0.5 font-mono">Trip Limit: 60.0°C</div>
+            </div>
+
+            <!-- Tile 2 -->
+            <div class="panel p-3.5">
+              <div class="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">NBM Expected Temp</div>
+              <div class="mt-1 flex items-baseline gap-1">
+                <span id="kpi-expected" class="text-2xl font-bold font-mono text-blue-600">--</span>
+                <span class="text-xs text-slate-500 font-medium">°C</span>
+              </div>
+              <div class="text-[10px] text-slate-500 mt-0.5">Physics baseline model</div>
+            </div>
+
+            <!-- Tile 3 -->
+            <div class="panel p-3.5">
+              <div class="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Residual Deviation</div>
+              <div class="mt-1 flex items-baseline gap-1">
+                <span id="kpi-residual" class="text-2xl font-bold font-mono text-slate-900">--</span>
+                <span class="text-xs text-slate-500 font-medium">°C</span>
+              </div>
+              <div class="text-[10px] text-slate-400 mt-0.5 font-mono">r_t = Actual - Expected</div>
+            </div>
+
+            <!-- Tile 4 -->
+            <div class="panel p-3.5">
+              <div class="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">CUSUM Drift Score</div>
+              <div class="mt-1 flex items-baseline gap-1">
+                <span id="kpi-cusum" class="text-2xl font-bold font-mono text-purple-700">--</span>
+                <span class="text-xs text-slate-500 font-medium" id="kpi-cusum-thresh-label">/ 36.0</span>
+              </div>
+              <div class="text-[10px] text-slate-500 mt-0.5 font-mono">Accumulated variance</div>
+            </div>
+
+            <!-- Tile 5 -->
+            <div class="panel p-3.5">
+              <div class="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Detection Earliness</div>
+              <div class="mt-1 flex items-baseline gap-1">
+                <span class="text-2xl font-bold font-mono text-amber-600" id="kpi-earliness">34.7</span>
+                <span class="text-xs text-amber-700 font-medium" id="kpi-earliness-unit">Hours</span>
+              </div>
+              <div class="text-[10px] text-slate-500 mt-0.5" id="kpi-earliness-sub">Prior to turbine trip</div>
+            </div>
+
+            <!-- Tile 6 -->
+            <div class="panel p-3.5">
+              <div class="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Estimated Savings</div>
+              <div class="mt-1 flex items-baseline gap-1">
+                <span class="text-2xl font-bold font-mono text-emerald-700" id="kpi-savings">$48,500</span>
+              </div>
+              <div class="text-[10px] text-slate-500 mt-0.5" id="kpi-savings-sub">Avoided downtime</div>
+            </div>
+          </div>
+
+          <!-- Timeline Controls -->
+          <div class="panel p-4 space-y-3">
+            <div class="flex flex-wrap items-center justify-between gap-3">
+              <div class="flex items-center gap-2">
+                <button id="btn-play" onclick="togglePlayback()" class="bg-blue-600 hover:bg-blue-700 text-white px-3.5 py-1.5 rounded-md text-xs font-semibold flex items-center gap-1.5 transition shadow-sm">
+                  <i data-lucide="play" class="w-3.5 h-3.5 fill-current"></i>
+                  <span id="play-text">Play Simulation</span>
+                </button>
+                <button onclick="resetPlayback()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-md text-xs font-medium border border-slate-300 transition">
+                  Reset
+                </button>
+                <button onclick="jumpToFirstAlarm()" id="btn-jump" class="bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-300 px-3 py-1.5 rounded-md text-xs font-semibold transition flex items-center gap-1.5">
+                  <i data-lucide="alert-circle" class="w-3.5 h-3.5"></i>
+                  <span>Jump to First Alarm</span>
+                </button>
+              </div>
+
+              <!-- Auto-Pause on Failure Toggle -->
+              <div class="flex items-center gap-3">
+                <label class="flex items-center gap-1.5 cursor-pointer text-xs font-semibold text-slate-700 select-none bg-slate-50 px-2.5 py-1 rounded border border-slate-200">
+                  <input type="checkbox" id="check-auto-pause" checked class="w-3.5 h-3.5 text-blue-600 rounded accent-blue-600 cursor-pointer">
+                  <span>Auto-Pause on Alarm</span>
+                </label>
+
+                <div class="flex items-center gap-1.5 text-xs">
+                  <span class="text-slate-500">Speed:</span>
+                  <select id="sim-speed" onchange="changeSpeed(this.value)" class="bg-slate-50 border border-slate-200 rounded px-2 py-1 text-slate-700 font-medium outline-none">
+                    <option value="200">1x (Slow)</option>
+                    <option value="90" selected>3x (Normal)</option>
+                    <option value="30">10x (Fast)</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <div class="pt-1">
+              <input type="range" id="timeline-slider" min="0" max="383" value="0" oninput="onSliderMove(this.value)"
+                     class="w-full h-2 bg-slate-200 rounded appearance-none cursor-pointer accent-blue-600 border border-slate-300">
+              <div class="flex justify-between text-[11px] text-slate-500 font-mono mt-1">
+                <span>Hour 0 (Normal Baseline)</span>
+                <span id="timeline-label" class="text-amber-700 font-semibold">▲ Pre-Fault 48h Window</span>
+                <span>Hour 64 (Trip Event)</span>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+
+      <!-- MAIN CHART: ACTUAL VS EXPECTED TEMPERATURE -->
+      <div class="panel p-5 space-y-3">
+        <div class="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h3 class="text-sm font-semibold text-slate-900 flex items-center gap-2">
+              <span>1. Bearing Thermal Physics Trajectory</span>
+            </h3>
+            <p class="text-xs text-slate-500">Physical sensor measurement vs. Normal Behavior Model (NBM) predicted baseline.</p>
+          </div>
+          <div class="flex items-center gap-4 text-xs font-medium">
+            <span class="flex items-center gap-1.5"><span class="w-3 h-0.5 bg-rose-600 rounded"></span> Actual Physical Sensor</span>
+            <span class="flex items-center gap-1.5"><span class="w-3 h-0.5 bg-blue-600 rounded"></span> NBM Expected Baseline</span>
+            <span class="flex items-center gap-1.5 text-slate-500">Threshold: 60°C</span>
+          </div>
+        </div>
+        <div class="chart-container-main">
+          <canvas id="chart-main"></canvas>
+        </div>
+      </div>
+
+      <!-- TWO SECONDARY SUPPORTING CHARTS -->
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        
+        <div class="panel p-5 space-y-3">
+          <div>
+            <h3 class="text-sm font-semibold text-slate-900">2. Thermal Residual Anomaly ($r_t = Actual - Expected$)</h3>
+            <p class="text-xs text-slate-500">Residual centers on 0°C under normal operation. Sustained deviation indicates mechanical friction.</p>
+          </div>
+          <div class="chart-container-sm">
+            <canvas id="chart-residual"></canvas>
+          </div>
+        </div>
+
+        <div class="panel p-5 space-y-3">
+          <div>
+            <h3 class="text-sm font-semibold text-slate-900">3. CUSUM Drift Accumulator ($S_t$) & Alarm Gate</h3>
+            <p class="text-xs text-slate-500">Filters out transient wind gusts; triggers alarm once cumulative drift exceeds decision threshold.</p>
+          </div>
+          <div class="chart-container-sm">
+            <canvas id="chart-cusum"></canvas>
+          </div>
+        </div>
+
+      </div>
+
+    </section>
+
+    <!-- ============================================================ -->
+    <!-- TAB 2: INTERACTIVE NACELLE X-RAY VIEW                        -->
+    <!-- ============================================================ -->
+    <section id="view-xray" class="tab-view hidden space-y-6">
+      
+      <div class="panel p-6 space-y-6">
+        <div class="border-b border-slate-200 pb-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
+            <h2 class="text-base font-semibold text-slate-900 flex items-center gap-2">
+              <i data-lucide="scan" class="w-4 h-4 text-blue-600"></i>
+              <span>Interactive Nacelle Drivetrain X-Ray & Subsystem Telemetry</span>
+            </h2>
+            <p class="text-xs text-slate-500 mt-1">
+              Click on any component inside the wind turbine nacelle to inspect physical telemetry, heat dissipation, and sensor correlation live.
+            </p>
+          </div>
+          <div class="flex items-center gap-2 text-xs font-mono">
+            <span class="px-2.5 py-1 rounded bg-slate-100 text-slate-700 border border-slate-200">Asset: WTG-04</span>
+            <span class="px-2.5 py-1 rounded bg-blue-50 text-blue-700 border border-blue-200 font-bold">1.5 MW Geared Drivetrain</span>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+          
+          <!-- Detailed SVG Schematic (7 Cols) -->
+          <div class="lg:col-span-7 panel-subtle p-6 rounded-xl border border-slate-200 space-y-4">
+            <div class="flex justify-between items-center text-xs">
+              <span class="font-bold text-slate-800 uppercase tracking-wider">Internal Nacelle Schematic (Click Component):</span>
+              <span class="text-slate-400 font-mono">Live Synchronized with Timeline</span>
+            </div>
+
+            <div class="bg-white rounded-xl p-4 border border-slate-200 shadow-sm flex items-center justify-center">
+              <svg viewBox="0 0 700 320" class="w-full h-auto max-h-[300px]">
+                <path d="M 60,60 L 580,60 Q 640,60 640,110 L 640,240 Q 640,270 580,270 L 60,270 Z" fill="#f8fafc" stroke="#cbd5e1" stroke-width="3" stroke-dasharray="6,4"/>
+                <polygon points="10,80 70,120 70,210 10,250" fill="#334155" stroke="#1e293b" stroke-width="2"/>
+                <text x="25" y="170" fill="#ffffff" font-size="11" font-weight="bold">Rotor</text>
+
+                <rect id="part-main-shaft" onclick="inspectComponent('main_shaft')" x="70" y="145" width="110" height="40" rx="3" fill="#64748b" stroke="#475569" stroke-width="2" class="nacelle-part"/>
+                <text x="85" y="170" fill="#ffffff" font-size="10" font-weight="bold" pointer-events="none">Main Shaft</text>
+
+                <rect id="part-main-bearing" onclick="inspectComponent('main_bearing')" x="105" y="130" width="40" height="70" rx="4" fill="#94a3b8" stroke="#64748b" stroke-width="2" class="nacelle-part"/>
+                <text x="110" y="120" fill="#475569" font-size="9" font-weight="bold">Main Brg</text>
+
+                <rect id="part-gearbox" onclick="inspectComponent('gearbox')" x="180" y="115" width="140" height="100" rx="6" fill="#475569" stroke="#334155" stroke-width="2" class="nacelle-part"/>
+                <text x="220" y="170" fill="#ffffff" font-size="12" font-weight="bold" pointer-events="none">Gearbox</text>
+                <text x="205" y="190" fill="#cbd5e1" font-size="9" pointer-events="none">1:105 Planetary</text>
+
+                <rect id="part-hs-shaft" onclick="inspectComponent('hs_shaft')" x="320" y="152" width="75" height="26" rx="2" fill="#64748b" stroke="#475569" stroke-width="2" class="nacelle-part"/>
+                <circle cx="355" cy="165" r="22" fill="#94a3b8" stroke="#475569" stroke-width="2" pointer-events="none"/>
+                <text x="338" y="125" fill="#475569" font-size="9" font-weight="bold">HS Brake</text>
+
+                <rect id="part-gen-bearing" onclick="inspectComponent('gen_bearing')" x="395" y="132" width="45" height="66" rx="4" fill="#e11d48" stroke="#be123c" stroke-width="2.5" class="nacelle-part nacelle-part-active"/>
+                <circle id="xray-bearing-pulse" cx="417" cy="165" r="14" fill="none" stroke="#e11d48" stroke-width="2" class="animate-ping" opacity="0.6"/>
+                <text x="400" y="115" fill="#be123c" font-size="10" font-weight="bold">Drive Brg</text>
+                <text x="402" y="215" fill="#e11d48" font-size="9" font-weight="bold">sensor_13</text>
+
+                <rect id="part-generator" onclick="inspectComponent('generator')" x="440" y="110" width="150" height="110" rx="6" fill="#334155" stroke="#1e293b" stroke-width="2" class="nacelle-part"/>
+                <text x="475" y="165" fill="#ffffff" font-size="12" font-weight="bold" pointer-events="none">1.5 MW Gen</text>
+                <text x="480" y="185" fill="#93c5fd" font-size="9" pointer-events="none">DFIG 1,500 RPM</text>
+
+                <rect id="part-cooling" onclick="inspectComponent('cooling')" x="590" y="90" width="40" height="150" rx="4" fill="#e2e8f0" stroke="#cbd5e1" stroke-width="2" class="nacelle-part"/>
+                <text x="595" y="170" fill="#64748b" font-size="9" font-weight="bold" transform="rotate(90 600,170)">Radiator Fan</text>
+              </svg>
+            </div>
+
+            <div class="flex flex-wrap items-center justify-between text-[11px] text-slate-500 pt-1">
+              <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded bg-rose-600"></span> Sensor 13 Bearing (Target Under Diagnosis)</span>
+              <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded bg-slate-600"></span> Mechanical Transmission Subsystems</span>
+              <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded bg-slate-800"></span> Electrical Generation Subsystem</span>
+            </div>
+          </div>
+
+          <!-- Component Deep-Dive Inspection Card (5 Cols) -->
+          <div class="lg:col-span-5 panel p-5 space-y-4">
+            <div class="border-b border-slate-100 pb-3 flex justify-between items-start">
+              <div>
+                <span class="text-[10px] font-bold text-blue-600 uppercase tracking-wider block" id="comp-category">CRITICAL MONITORED SUBSYSTEM</span>
+                <h3 class="text-base font-bold text-slate-900" id="comp-name">Generator Drive-End Bearing</h3>
+              </div>
+              <span id="comp-health-pill" class="px-2.5 py-0.5 rounded text-[10px] font-bold bg-rose-100 text-rose-800 border border-rose-300">
+                ACTIVE MONITOR
+              </span>
+            </div>
+
+            <p class="text-xs text-slate-600 leading-relaxed" id="comp-description">
+              The generator drive-end bearing supports the high-speed input shaft into the double-fed induction generator (DFIG). It is subject to continuous radial loads and electrical eddy currents. Monitored in real-time by sensor_13_avg.
+            </p>
+
+            <div class="p-3 bg-slate-50 rounded-lg border border-slate-200 text-xs space-y-2">
+              <div class="flex justify-between items-center">
+                <span class="text-slate-500">Live Operating Temp:</span>
+                <span class="font-mono font-bold text-slate-900" id="comp-stat-1">35.4 °C</span>
+              </div>
+              <div class="flex justify-between items-center">
+                <span class="text-slate-500">Rotational Speed:</span>
+                <span class="font-mono font-bold text-slate-700" id="comp-stat-2">1,480 RPM</span>
+              </div>
+              <div class="flex justify-between items-center">
+                <span class="text-slate-500">Expected Normal Range:</span>
+                <span class="font-mono font-bold text-blue-600" id="comp-stat-3">30.0 °C - 48.0 °C</span>
+              </div>
+              <div class="flex justify-between items-center">
+                <span class="text-slate-500">Predicted Failure Mechanism:</span>
+                <span class="font-bold text-rose-600" id="comp-stat-4">Spalling / Micro-Welding</span>
+              </div>
+            </div>
+
+            <div class="space-y-2 pt-1">
+              <h4 class="text-xs font-semibold text-slate-800 uppercase tracking-wider">Predictive Maintenance Guidance:</h4>
+              <p class="text-xs text-slate-500 leading-relaxed" id="comp-guidance">
+                Condition-based NBM monitoring isolates residual thermal drift $34.7\text{ hours}$ before physical safety trip limits (60°C). Dispatch lubrication purge crew before roller track degradation escalates.
+              </p>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+    </section>
+
+    <!-- ============================================================ -->
+    <!-- TAB 3: CUSTOM SCENARIO BUILDER LAB                          -->
+    <!-- ============================================================ -->
+    <section id="view-custom-builder" class="tab-view hidden space-y-6">
+      
+      <div class="panel p-6 space-y-6">
+        <div class="border-b border-slate-200 pb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <h2 class="text-base font-semibold text-slate-900 flex items-center gap-2">
+              <i data-lucide="wrench" class="w-4 h-4 text-blue-600"></i>
+              <span>Custom Test Scenario Studio</span>
+            </h2>
+            <p class="text-xs text-slate-500 mt-1">
+              Design, test, and save custom synthetic operational streams to stress-test your predictive maintenance NBM pipeline against extreme weather, rapid thermal runaway, or noise.
+            </p>
+          </div>
+
+          <div class="flex items-center gap-2">
+            <span class="text-xs font-semibold text-slate-500">Quick Presets:</span>
+            <button onclick="loadScenarioPreset('storm')" class="px-2.5 py-1 rounded bg-slate-100 hover:bg-slate-200 text-xs font-medium text-slate-700 transition">
+              🌪️ High-Wind Storm
+            </button>
+            <button onclick="loadScenarioPreset('rapid_failure')" class="px-2.5 py-1 rounded bg-slate-100 hover:bg-slate-200 text-xs font-medium text-slate-700 transition">
+              ⚡ Sudden Lubricant Loss
+            </button>
+            <button onclick="loadScenarioPreset('heatwave')" class="px-2.5 py-1 rounded bg-slate-100 hover:bg-slate-200 text-xs font-medium text-slate-700 transition">
+              ☀️ Summer Heatwave
+            </button>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          
+          <div class="lg:col-span-5 space-y-4 panel-subtle p-5 rounded-xl border border-slate-200">
+            <h3 class="text-xs font-bold text-slate-800 uppercase tracking-wider">1. Scenario Parameters</h3>
+
+            <div>
+              <label class="text-xs font-medium text-slate-700 block mb-1">Scenario Name</label>
+              <input type="text" id="builder-name" value="Custom Scenario 1"
+                     class="w-full text-xs bg-white border border-slate-300 rounded px-3 py-1.5 text-slate-900 font-medium outline-none focus:border-blue-600">
+            </div>
+
+            <div>
+              <label class="text-xs font-medium text-slate-700 block mb-1">Failure Profile</label>
+              <select id="builder-fault-type" onchange="previewCustomScenario()" class="w-full text-xs bg-white border border-slate-300 rounded px-2.5 py-1.5 text-slate-900 outline-none">
+                <option value="linear_drift" selected>Gradual Mechanical Friction Drift (Slow Wear)</option>
+                <option value="rapid_spike">Sudden Thermal Runaway (Pump/Lube Breakdown)</option>
+                <option value="intermittent_drag">Intermittent Thermal Drag (Failing Bearing Cage)</option>
+                <option value="clean_healthy">Fully Healthy Stream (False-Alarm Stress Test)</option>
+              </select>
+            </div>
+
+            <div class="space-y-1">
+              <div class="flex justify-between text-xs">
+                <span class="font-medium text-slate-700">Baseline Operating Temp:</span>
+                <span id="builder-base-temp-val" class="font-mono text-slate-800 font-bold">34.0 °C</span>
+              </div>
+              <input type="range" id="builder-base-temp" min="20" max="45" step="1" value="34" oninput="previewCustomScenario()"
+                     class="w-full h-1.5 bg-slate-200 rounded appearance-none cursor-pointer accent-blue-600">
+            </div>
+
+            <div class="space-y-1">
+              <div class="flex justify-between text-xs">
+                <span class="font-medium text-slate-700">Peak Thermal Deviation ($\Delta T$):</span>
+                <span id="builder-severity-val" class="font-mono text-rose-700 font-bold">+18.0 °C</span>
+              </div>
+              <input type="range" id="builder-severity" min="0" max="40" step="1" value="18" oninput="previewCustomScenario()"
+                     class="w-full h-1.5 bg-slate-200 rounded appearance-none cursor-pointer accent-rose-600">
+            </div>
+
+            <div class="space-y-1">
+              <div class="flex justify-between text-xs">
+                <span class="font-medium text-slate-700">Degradation Onset Time:</span>
+                <span id="builder-onset-val" class="font-mono text-amber-700 font-bold">Hour 16 (Window 96)</span>
+              </div>
+              <input type="range" id="builder-onset" min="4" max="50" step="1" value="16" oninput="previewCustomScenario()"
+                     class="w-full h-1.5 bg-slate-200 rounded appearance-none cursor-pointer accent-amber-600">
+            </div>
+
+            <div class="space-y-1">
+              <div class="flex justify-between text-xs">
+                <span class="font-medium text-slate-700">Sensor Noise Amplitude:</span>
+                <span id="builder-noise-val" class="font-mono text-slate-700 font-bold">± 1.2 °C</span>
+              </div>
+              <input type="range" id="builder-noise" min="0.2" max="4.0" step="0.2" value="1.2" oninput="previewCustomScenario()"
+                     class="w-full h-1.5 bg-slate-200 rounded appearance-none cursor-pointer accent-slate-600">
+            </div>
+
+            <div class="pt-2 flex gap-2">
+              <button onclick="saveAndDeployScenario()" class="flex-1 py-2 px-3 rounded-lg text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white shadow-sm flex items-center justify-center gap-1.5 transition">
+                <i data-lucide="play-circle" class="w-4 h-4"></i>
+                <span>Deploy & Run in Dashboard</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="lg:col-span-7 space-y-4">
+            <div class="panel-subtle p-4 rounded-xl border border-slate-200 space-y-3">
+              <div class="flex items-center justify-between">
+                <h3 class="text-xs font-bold text-slate-800 uppercase tracking-wider">2. Real-Time Curve Preview</h3>
+                <span class="text-xs text-slate-500 font-mono">Simulated 384 SCADA Steps (64 Hours)</span>
+              </div>
+              <div class="h-56 w-full relative">
+                <canvas id="chart-builder-preview"></canvas>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-3 gap-3">
+              <div class="p-3 bg-white rounded-lg border border-slate-200 shadow-sm text-xs">
+                <span class="text-slate-500 block text-[11px]">Predicted Peak Temp:</span>
+                <span id="builder-res-peak" class="text-lg font-bold font-mono text-rose-600">52.4 °C</span>
+              </div>
+              <div class="p-3 bg-white rounded-lg border border-slate-200 shadow-sm text-xs">
+                <span class="text-slate-500 block text-[11px]">Estimated Lead Time:</span>
+                <span id="builder-res-lead" class="text-lg font-bold font-mono text-amber-600">31.2 Hours</span>
+              </div>
+              <div class="p-3 bg-white rounded-lg border border-slate-200 shadow-sm text-xs">
+                <span class="text-slate-500 block text-[11px]">Alarm Decision:</span>
+                <span id="builder-res-decision" class="text-lg font-bold font-mono text-emerald-700">DETECTABLE</span>
+              </div>
+            </div>
+
+            <div class="p-3.5 bg-blue-50/60 rounded-lg border border-blue-200 text-xs text-blue-900 leading-relaxed">
+              💡 <strong>Instant Deployment:</strong> Once you click <em>"Deploy & Run in Dashboard"</em>, this custom telemetry sequence is compiled into the operational engine and made available in the <strong>Active Scenario</strong> switcher!
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+    </section>
+
+    <!-- ============================================================ -->
+    <!-- TAB 4: INTERACTIVE AI TWIN SANDBOX (WHAT-IF SIMULATOR)       -->
+    <!-- ============================================================ -->
+    <section id="view-simulator" class="tab-view hidden space-y-5">
+      
+      <div class="panel p-6 space-y-6">
+        <div class="border-b border-slate-200 pb-4">
+          <h2 class="text-base font-semibold text-slate-900 flex items-center gap-2">
+            <i data-lucide="sliders" class="w-4 h-4 text-blue-600"></i>
+            <span>Interactive NBM Digital Twin "What-If" Simulator</span>
+          </h2>
+          <p class="text-xs text-slate-500 mt-1">
+            Manually inject virtual wind speed, electrical power output, and mechanical friction to see how the NBM predicts expected temperature and computes real-time health risk.
+          </p>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          
+          <div class="lg:col-span-6 space-y-4 panel-subtle p-5 rounded-xl border border-slate-200">
+            <h3 class="text-xs font-bold text-slate-800 uppercase tracking-wider">Virtual SCADA Operating Knobs</h3>
+            
+            <div class="space-y-1.5">
+              <div class="flex justify-between text-xs">
+                <span class="font-medium text-slate-700">Wind Velocity ($v$):</span>
+                <span id="sim-wind-val" class="font-mono font-bold text-blue-700">11.5 m/s</span>
+              </div>
+              <input type="range" id="sim-slider-wind" min="3.0" max="25.0" step="0.5" value="11.5" oninput="runWhatIfSimulation()"
+                     class="w-full h-2 bg-slate-200 rounded appearance-none cursor-pointer accent-blue-600">
+              <div class="flex justify-between text-[10px] text-slate-400">
+                <span>Cut-in (3 m/s)</span>
+                <span>Rated (12 m/s)</span>
+                <span>Cut-out (25 m/s)</span>
+              </div>
+            </div>
+
+            <div class="space-y-1.5">
+              <div class="flex justify-between text-xs">
+                <span class="font-medium text-slate-700">Active Power Generation ($P$):</span>
+                <span id="sim-power-val" class="font-mono font-bold text-emerald-700">1,450 kW</span>
+              </div>
+              <input type="range" id="sim-slider-power" min="50" max="2000" step="50" value="1450" oninput="runWhatIfSimulation()"
+                     class="w-full h-2 bg-slate-200 rounded appearance-none cursor-pointer accent-emerald-600">
+              <div class="flex justify-between text-[10px] text-slate-400">
+                <span>50 kW (Idle)</span>
+                <span>1,500 kW (Rated)</span>
+                <span>2,000 kW (Max)</span>
+              </div>
+            </div>
+
+            <div class="space-y-1.5">
+              <div class="flex justify-between text-xs">
+                <span class="font-medium text-slate-700">Ambient Temperature ($T_{ambient}$):</span>
+                <span id="sim-amb-val" class="font-mono font-bold text-slate-800">18.0 °C</span>
+              </div>
+              <input type="range" id="sim-slider-amb" min="-10" max="40" step="1" value="18" oninput="runWhatIfSimulation()"
+                     class="w-full h-2 bg-slate-200 rounded appearance-none cursor-pointer accent-slate-600">
+              <div class="flex justify-between text-[10px] text-slate-400">
+                <span>-10°C (Winter)</span>
+                <span>18°C (Nominal)</span>
+                <span>40°C (Summer Peak)</span>
+              </div>
+            </div>
+
+            <div class="space-y-1.5 pt-2 border-t border-slate-200">
+              <div class="flex justify-between text-xs">
+                <span class="font-semibold text-rose-700">Injected Bearing Mechanical Friction / Wear:</span>
+                <span id="sim-friction-val" class="font-mono font-bold text-rose-700">+0.0 °C (Healthy)</span>
+              </div>
+              <input type="range" id="sim-slider-friction" min="0" max="25" step="0.5" value="0" oninput="runWhatIfSimulation()"
+                     class="w-full h-2 bg-slate-200 rounded appearance-none cursor-pointer accent-rose-600">
+              <div class="flex justify-between text-[10px] text-slate-400">
+                <span>0.0°C (Zero Wear)</span>
+                <span>+8.0°C (Degraded)</span>
+                <span>+25.0°C (Catastrophic)</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="lg:col-span-6 flex flex-col justify-between space-y-4 panel-subtle p-5 rounded-xl border border-slate-200">
+            <h3 class="text-xs font-bold text-slate-800 uppercase tracking-wider">AI Digital Twin Output & Evaluation</h3>
+
+            <div class="grid grid-cols-2 gap-3 text-xs">
+              <div class="p-3 bg-white rounded-lg border border-slate-200 shadow-sm">
+                <span class="text-slate-400 block text-[11px]">Calculated Physics Baseline:</span>
+                <span id="sim-res-expected" class="text-xl font-bold font-mono text-blue-600">42.4 °C</span>
+              </div>
+              <div class="p-3 bg-white rounded-lg border border-slate-200 shadow-sm">
+                <span class="text-slate-400 block text-[11px]">Virtual Actual Thermometer:</span>
+                <span id="sim-res-actual" class="text-xl font-bold font-mono text-slate-900">42.4 °C</span>
+              </div>
+            </div>
+
+            <div class="p-4 bg-white rounded-lg border border-slate-200 shadow-sm space-y-3">
+              <div class="flex justify-between items-center text-xs">
+                <span class="font-semibold text-slate-700">Subsystem Health Index:</span>
+                <span id="sim-res-health" class="font-bold text-emerald-600 font-mono">100% (OPTIMAL)</span>
+              </div>
+              <div class="w-full h-2.5 bg-slate-100 rounded-full overflow-hidden border border-slate-200">
+                <div id="sim-res-bar" class="h-full bg-emerald-500 rounded-full transition-all duration-200" style="width: 100%;"></div>
+              </div>
+              <div class="flex justify-between items-center text-xs">
+                <span class="text-slate-500">CUSUM Alarm Decision:</span>
+                <span id="sim-res-alarm" class="px-2.5 py-0.5 rounded text-[11px] font-bold bg-emerald-100 text-emerald-800">NORMAL OPERATION</span>
+              </div>
+            </div>
+
+            <div class="p-3.5 bg-blue-50/60 rounded-lg border border-blue-200 text-xs text-blue-900 leading-relaxed">
+              <strong>Physics Observation:</strong> Notice how increasing Active Power naturally increases expected temperature, but the residual stays close to 0°C. Dragging the <em>Mechanical Friction</em> slider causes an anomalous positive residual, triggering an alert!
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+    </section>
+
+    <!-- ============================================================ -->
+    <!-- TAB 5: BENCHMARK LEADERBOARD                                 -->
+    <!-- ============================================================ -->
+    <section id="view-leaderboard" class="tab-view hidden space-y-5">
+      
+      <div class="panel p-6 space-y-5">
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-200 pb-4">
+          <div>
+            <h2 class="text-base font-semibold text-slate-900">Architecture Benchmark Evaluation</h2>
+            <p class="text-xs text-slate-500 mt-1">
+              Comparative analysis of five model families evaluated on real Wind Farm A SCADA telemetry.
+            </p>
+          </div>
+          <div class="text-xs font-mono text-slate-700 bg-slate-100 px-3 py-1.5 rounded-lg border border-slate-200">
+            Champion Architecture: <strong class="text-blue-700 font-bold">GRU Regressor (F1: 0.845)</strong>
+          </div>
+        </div>
+
+        <div class="overflow-x-auto rounded-lg border border-slate-200">
+          <table class="w-full text-left text-xs">
+            <thead class="bg-slate-50 border-b border-slate-200 text-[11px] uppercase font-semibold text-slate-600">
+              <tr>
+                <th class="py-3 px-4">Architecture</th>
+                <th class="py-3 px-3">F1-Score</th>
+                <th class="py-3 px-3">Precision</th>
+                <th class="py-3 px-3">Recall (Detection)</th>
+                <th class="py-3 px-3">False Alarm Rate (FAR)</th>
+                <th class="py-3 px-3">PR-AUC</th>
+                <th class="py-3 px-3">ROC-AUC</th>
+                <th class="py-3 px-4">Deployment Status</th>
+              </tr>
+            </thead>
+            <tbody id="table-benchmark" class="divide-y divide-slate-200 font-mono text-slate-800">
+              <!-- Rendered via JS -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- ============================================================ -->
+    <!-- TAB 6: DIAGNOSTIC ASSESSMENT                                 -->
+    <!-- ============================================================ -->
+    <section id="view-diagnosis" class="tab-view hidden space-y-5">
+      
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
+        
+        <div class="panel p-6 space-y-4 md:col-span-2">
+          <h3 class="text-sm font-semibold text-slate-900 border-b border-slate-200 pb-3">Subsystem Health Diagnosis</h3>
+          
+          <div class="grid grid-cols-2 gap-3 text-xs">
+            <div class="panel-subtle p-3 rounded-lg">
+              <span class="text-slate-500 block mb-1">Target Component:</span>
+              <span class="text-slate-900 font-semibold">Generator Drive-End Bearing (#0)</span>
+            </div>
+            <div class="panel-subtle p-3 rounded-lg">
+              <span class="text-slate-500 block mb-1">Diagnosed Anomaly:</span>
+              <span class="text-rose-600 font-semibold">Progressive Bearing Galling / Heat Runaway</span>
+            </div>
+            <div class="panel-subtle p-3 rounded-lg">
+              <span class="text-slate-500 block mb-1">Lead Time:</span>
+              <span class="text-amber-700 font-semibold font-mono">34.7 Hours prior to trip</span>
+            </div>
+            <div class="panel-subtle p-3 rounded-lg">
+              <span class="text-slate-500 block mb-1">Recommended Response:</span>
+              <span class="text-blue-700 font-semibold">Grease Purge & Schedule Endoscopy</span>
+            </div>
+          </div>
+
+          <div class="space-y-2 pt-2">
+            <h4 class="text-xs font-semibold text-slate-700 uppercase tracking-wider">Standard Operating Procedure:</h4>
+            <ol class="list-decimal list-inside space-y-2 text-xs text-slate-700">
+              <li class="p-2.5 rounded bg-slate-50 border border-slate-200">
+                <strong>Remote Diagnostics:</strong> Verify lube oil pressure and generator stator temperatures to rule out external electrical faults.
+              </li>
+              <li class="p-2.5 rounded bg-slate-50 border border-slate-200">
+                <strong>Lubrication Flush:</strong> Initiate automated grease injection cycle via remote SCADA control.
+              </li>
+              <li class="p-2.5 rounded bg-slate-50 border border-slate-200">
+                <strong>Field Inspection:</strong> Schedule a visual borescope examination during the next low-wind maintenance interval.
+              </li>
+            </ol>
+          </div>
+        </div>
+
+        <div class="panel p-6 space-y-4">
+          <h3 class="text-sm font-semibold text-slate-900 border-b border-slate-200 pb-3">Cost-Benefit Analysis</h3>
+          
+          <div class="space-y-3 text-xs">
+            <div class="panel-subtle p-3.5 rounded-lg border-rose-200 bg-rose-50/40 space-y-1">
+              <span class="font-semibold text-rose-700">Unplanned Failure Event:</span>
+              <p class="text-slate-600 leading-relaxed">
+                Turbine runs to catastrophic runaway at 94°C. Secondary damage to generator windings; requires emergency crane vessel.
+              </p>
+              <div class="text-sm font-bold text-rose-700 font-mono mt-2">$65,000+ Downtime & Repair</div>
+            </div>
+
+            <div class="panel-subtle p-3.5 rounded-lg border-emerald-200 bg-emerald-50/40 space-y-1">
+              <span class="font-semibold text-emerald-800">Condition-Based Intervention:</span>
+              <p class="text-slate-600 leading-relaxed">
+                Early alarm allows component replacement during planned downtime window with standard maintenance vessel.
+              </p>
+              <div class="text-sm font-bold text-emerald-800 font-mono mt-2">$16,500 Planned Repair</div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+    </section>
+
+  </main>
+
+  <!-- ============================================================== -->
+  <!-- CRITICAL FAILURE INTERCEPTION MODAL (AUTO-PAUSE POPUP)        -->
+  <!-- ============================================================== -->
+  <div id="modal-critical-alarm" class="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-sm hidden items-center justify-center p-4">
+    <div class="bg-white border-2 border-rose-500 rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-5 animate-emergency">
+      
+      <div class="flex items-start gap-4">
+        <div class="w-12 h-12 rounded-xl bg-rose-100 border border-rose-200 text-rose-600 flex items-center justify-center shrink-0">
+          <i data-lucide="alert-octagon" class="w-7 h-7"></i>
+        </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <span class="px-2 py-0.5 rounded text-[10px] font-extrabold bg-rose-600 text-white uppercase tracking-wider">
+              CRITICAL INTERVENTION
+            </span>
+            <span class="text-xs font-mono text-slate-500" id="alarm-modal-time">Hour 17.2</span>
+          </div>
+          <h2 class="text-lg font-bold text-slate-900 mt-1">Turbine Degradation Detected & Verified!</h2>
+          <p class="text-xs text-slate-500">The simulation was automatically paused to prevent component seizure.</p>
+        </div>
+      </div>
+
+      <div class="p-4 bg-rose-50/60 rounded-xl border border-rose-200 text-xs space-y-2.5">
+        <div class="flex justify-between items-center">
+          <span class="text-slate-600">Subsystem Diagnosed:</span>
+          <span class="font-bold text-slate-900">Generator Drive-End Bearing (#0)</span>
+        </div>
+        <div class="flex justify-between items-center">
+          <span class="text-slate-600">Thermal Residual Deviation:</span>
+          <span class="font-mono font-bold text-rose-700" id="alarm-modal-res">+5.2 °C Above Expected</span>
+        </div>
+        <div class="flex justify-between items-center">
+          <span class="text-slate-600">CUSUM Accumulated Drift:</span>
+          <span class="font-mono font-bold text-purple-700" id="alarm-modal-cusum">38.4 / 36.0 (Threshold Exceeded)</span>
+        </div>
+        <div class="flex justify-between items-center">
+          <span class="text-slate-600">Actionable Lead Time Remaining:</span>
+          <span class="font-mono font-bold text-amber-700">34.7 Hours Prior to 60°C Trip</span>
+        </div>
+        <div class="flex justify-between items-center border-t border-rose-200/80 pt-2">
+          <span class="text-slate-600">Certainty / Confidence Level:</span>
+          <span class="font-bold text-emerald-700 flex items-center gap-1">
+            <i data-lucide="shield-check" class="w-3.5 h-3.5"></i>
+            <span>99.8% (4/4 Consecutive Steps)</span>
+          </span>
+        </div>
+      </div>
+
+      <div class="text-xs text-slate-600 leading-relaxed space-y-1">
+        <p>
+          <strong>Why this is important:</strong> In a real wind turbine, the physical bearing is only at <strong>41°C</strong> right now. Normal hardware safety thresholds won't trip until <strong>60°C</strong> or <strong>94°C</strong> (when metal rollers melt). 
+        </p>
+        <p class="text-slate-500">
+          AeroPulse caught the subtle anomalous friction <strong>34.7 hours early</strong>, giving you time to dispatch maintenance before generator damage occurs.
+        </p>
+      </div>
+
+      <div class="flex items-center justify-between pt-2 border-t border-slate-200 gap-3">
+        <button onclick="dismissAlarmModal(false)" class="flex-1 py-2 px-3 rounded-lg text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 transition">
+          Keep Paused & Inspect
+        </button>
+        <button onclick="dismissAlarmModal(true)" class="flex-1 py-2 px-3 rounded-lg text-xs font-semibold bg-rose-600 hover:bg-rose-700 text-white shadow-sm flex items-center justify-center gap-1.5 transition">
+          <i data-lucide="play" class="w-3.5 h-3.5 fill-current"></i>
+          <span>Continue Simulation</span>
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- DATA EMBED -->
+  <script src="data.js"></script>
+
+  <!-- APPLICATION LOGIC -->
+  <script>
+    // State
+    let currentStream = 'event_0_failure';
+    let currentModel = 'GRU';
+    let currentIndex = 0;
+    let isPlaying = false;
+    let playTimer = null;
+    let playIntervalMs = 90;
+    let hasAlertedForCurrentRun = false;
+    let customScenarios = {};
+
+    // Charts
+    let chartMain = null;
+    let chartRes = null;
+    let chartCusum = null;
+    let chartBuilderPreview = null;
+
+    // 2D Turbine State
+    let bladeAngle2D = 0;
+    let isCutaway2D = false;
+    let showWindFX2D = true;
+    let animFrame2D = null;
+    let rotorSpeed2D = 1.8;
+    let isRotorSpinning = true;
+    // Elements
+    const slider = document.getElementById('timeline-slider');
+
+    // Nacelle Component Details Data Map
+    const NACELLE_COMPONENTS = {
+      gen_bearing: {
+        category: 'CRITICAL MONITORED SUBSYSTEM (TARGET)',
+        name: 'Generator Drive-End Bearing (#0)',
+        healthBadge: 'ACTIVE NBM TWIN',
+        badgeColor: 'bg-rose-100 text-rose-800 border-rose-300',
+        description: 'Supports the high-speed input shaft into the double-fed induction generator (DFIG). It is subject to continuous radial loads and high centrifugal stress. Monitored in real-time by sensor_13_avg.',
+        stat1: 'Live Sync (°C)',
+        stat2: '1,480 RPM (High-Speed Shaft)',
+        stat3: '30.0 °C - 48.0 °C (Nominal)',
+        stat4: 'Galling & Micro-Welding Friction',
+        guidance: 'Condition-based NBM monitoring isolates residual thermal drift 34.7 hours before physical safety trip limits (60°C). Early grease purge or bearing swap preserves the generator stator windings.'
+      },
+      gearbox: {
+        category: 'MECHANICAL POWER TRANSMISSION',
+        name: 'Planetary + Helical Step-Up Gearbox',
+        healthBadge: 'OPTIMAL (HEALTHY)',
+        badgeColor: 'bg-emerald-100 text-emerald-800 border-emerald-300',
+        description: 'Converts low-speed blade rotation (12-16 RPM) to high-speed shaft rotation (1,200-1,600 RPM) via a two-stage planetary and single-stage parallel gear train. Ratio: 1:105.',
+        stat1: '54.2 °C (Oil Sump)',
+        stat2: '1:105 Speed Ratio',
+        stat3: '45.0 °C - 70.0 °C',
+        stat4: 'Tooth Root Pitting / Scuffing',
+        guidance: 'Continuous inline oil particle counter reads nominal ISO 4406 cleanliness. No metallic debris or gear mesh vibration anomalies detected.'
+      },
+      main_shaft: {
+        category: 'ROTOR TORQUE DRIVETRAIN',
+        name: 'Forged Alloy Main Drive Shaft',
+        healthBadge: 'NOMINAL',
+        badgeColor: 'bg-slate-100 text-slate-800 border-slate-300',
+        description: 'Transfers massive aerodynamic torque from the 3-blade rotor hub directly into the nacelle nacelle bedplate structure.',
+        stat1: '24.1 °C',
+        stat2: '14.2 RPM (Low-Speed)',
+        stat3: 'Ambient to 35.0 °C',
+        stat4: 'Torsional Fatigue Cracking',
+        guidance: 'Strain gauge sensors report bending moments well within design aerodynamic fatigue limits (IEC 61400-1 Class IIA).'
+      },
+      main_bearing: {
+        category: 'MAIN DRIVETRAIN SUPPORT',
+        name: 'Spherical Roller Main Bearing',
+        healthBadge: 'HEALTHY',
+        badgeColor: 'bg-emerald-100 text-emerald-800 border-emerald-300',
+        description: 'Absorbs turbulent thrust and axial aerodynamic loads from wind gusts, keeping the main shaft aligned with the planetary gearbox.',
+        stat1: '28.6 °C',
+        stat2: '14.2 RPM',
+        stat3: '20.0 °C - 42.0 °C',
+        stat4: 'Raceway Flaking',
+        guidance: 'Automatic grease replenishment dispenser active. Ultrasonic acoustic emissions are within pristine baseline bounds.'
+      },
+      hs_shaft: {
+        category: 'HIGH-SPEED DRIVETRAIN & SAFETY',
+        name: 'High-Speed Shaft & Caliper Brake',
+        healthBadge: 'READY',
+        badgeColor: 'bg-slate-100 text-slate-800 border-slate-300',
+        description: 'Connects gearbox high-speed output to generator rotor with hydraulic disc brake for emergency aerodynamic stalling.',
+        stat1: '32.1 °C',
+        stat2: '1,480 RPM',
+        stat3: 'Ambient to 55.0 °C',
+        stat4: 'Disc Warping / Pad Glazing',
+        guidance: 'Hydraulic system pressure at 160 bar. Emergency mechanical brake has zero drag and full friction pad thickness.'
+      },
+      generator: {
+        category: 'ELECTRICAL POWER CONVERSION',
+        name: '1.5 MW Doubly-Fed Induction Gen (DFIG)',
+        healthBadge: 'ONLINE (GENERATING)',
+        badgeColor: 'bg-blue-100 text-blue-800 border-blue-300',
+        description: 'Converts mechanical shaft power to 690V 3-phase AC power. Rotor slip rings and stator winding temperatures continuously tracked.',
+        stat1: '62.4 °C (Stator Windings)',
+        stat2: '1,500 kW Max Output',
+        stat3: '40.0 °C - 85.0 °C (Class H)',
+        stat4: 'Winding Insulation Breakdown',
+        guidance: 'Generator is operating at 96.2% electrical efficiency. Active reactive power compensation and grid frequency synchronization nominal.'
+      },
+      cooling: {
+        category: 'THERMAL AUXILIARY SYSTEM',
+        name: 'Nacelle Radiator & Heat Exchanger Fan',
+        healthBadge: 'OPERATIONAL',
+        badgeColor: 'bg-emerald-100 text-emerald-800 border-emerald-300',
+        description: 'Forced air and liquid coolant cooling loop to dissipate heat from gearbox lubrication and generator internal core.',
+        stat1: '22.0 °C (Coolant Return)',
+        stat2: 'Dual 2.2 kW Variable Speed Fans',
+        stat3: '15.0 °C - 35.0 °C',
+        stat4: 'Radiator Fin Clogging',
+        guidance: 'Thermostatic bypass valves modulating airflow correctly based on ambient temperature and wind speed.'
+      }
+    };
+
+    // Init
+    window.addEventListener('DOMContentLoaded', () => {
+      lucide.createIcons();
+      initBenchmarkTable();
+      initCharts();
+      init2DTurbine();
+      syncUI();
+      runWhatIfSimulation();
+      initBuilderPreviewChart();
+      previewCustomScenario();
+      inspectComponent('gen_bearing');
+    });
+
+    // -------------------------------------------------------------
+    // REALISTIC ROTOR DYNAMICS & PHYSICS ACCUMULATION LOOP (60/120 FPS)
+    // -------------------------------------------------------------
+    let currentRotorAngle = 0;
+    let targetRotorDegPerSec = 85.0; // Commercial 1.5MW rotation (~14.2 RPM = 85.2 deg/sec)
+    let currentRotorDegPerSec = 85.0;
+    let lastRotorTimestamp = performance.now();
+    let isRotorPhysicsRunning = false;
+
+    function init2DTurbine() {
+      if (isRotorPhysicsRunning) return;
+      isRotorPhysicsRunning = true;
+      lastRotorTimestamp = performance.now();
+
+      function rotorPhysicsFrame(now) {
+        // Delta time in seconds (clamped to prevent jumps if tab was backgrounded)
+        const dt = Math.min((now - lastRotorTimestamp) / 1000, 0.05);
+        lastRotorTimestamp = now;
+
+        // Realistic blade inertia: massive 40-meter rotor blades smoothly accelerate/decelerate
+        const inertiaFactor = Math.min(1.0, dt * 2.5);
+        currentRotorDegPerSec += (targetRotorDegPerSec - currentRotorDegPerSec) * inertiaFactor;
+
+        // Advance continuous rotation angle (never resets or jerks)
+        currentRotorAngle = (currentRotorAngle + currentRotorDegPerSec * dt) % 360;
+
+        // Apply smooth rotation to the SVG blades group around hub center (100, 90)
+        const svgBlades = document.getElementById('svg-blades');
+        if (svgBlades) {
+          svgBlades.setAttribute('transform', `rotate(${currentRotorAngle.toFixed(2)}, 100, 90)`);
+        }
+
+        requestAnimationFrame(rotorPhysicsFrame);
+      }
+
+      requestAnimationFrame(rotorPhysicsFrame);
+    }
+
+function setTab(tabName) {
+      document.querySelectorAll('.tab-view').forEach(el => el.classList.add('hidden'));
+      document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.className = 'tab-btn px-3 py-1.5 rounded-md text-xs font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-200/60 flex items-center gap-1.5 transition';
+      });
+
+      const activeView = document.getElementById(`view-${tabName}`);
+      if (activeView) activeView.classList.remove('hidden');
+
+      const activeBtn = document.getElementById(`nav-${tabName}`);
+      if (activeBtn) {
+        activeBtn.className = 'tab-btn px-3 py-1.5 rounded-md text-xs font-semibold bg-blue-600 text-white shadow-sm flex items-center gap-1.5 transition';
+      }
+
+      if (tabName === 'dashboard') {
+        if (chartMain) setTimeout(() => { chartMain.resize(); chartRes.resize(); chartCusum.resize(); }, 50);
+        // 2D turbine automatically scales with SVG viewBox
+      }
+      if (tabName === 'custom-builder' && chartBuilderPreview) {
+        setTimeout(() => chartBuilderPreview.resize(), 50);
+      }
+      lucide.createIcons();
+    }
+
+    function inspectComponent(key) {
+      document.querySelectorAll('.nacelle-part').forEach(p => p.classList.remove('nacelle-part-active'));
+      const partEl = document.getElementById(`part-${key.replace('_', '-')}`);
+      if (partEl) partEl.classList.add('nacelle-part-active');
+
+      const comp = NACELLE_COMPONENTS[key];
+      if (!comp) return;
+
+      document.getElementById('comp-category').innerText = comp.category;
+      document.getElementById('comp-name').innerText = comp.name;
+      
+      const badge = document.getElementById('comp-health-pill');
+      badge.innerText = comp.healthBadge;
+      badge.className = `px-2.5 py-0.5 rounded text-[10px] font-bold border ${comp.badgeColor}`;
+
+      document.getElementById('comp-description').innerText = comp.description;
+
+      if (key === 'gen_bearing') {
+        const stream = getStreamData(currentStream);
+        const actualT = stream.telemetry.actual_temp[currentIndex];
+        document.getElementById('comp-stat-1').innerText = `${actualT.toFixed(1)} °C (Actual sensor_13)`;
+      } else {
+        document.getElementById('comp-stat-1').innerText = comp.stat1;
+      }
+
+      document.getElementById('comp-stat-2').innerText = comp.stat2;
+      document.getElementById('comp-stat-3').innerText = comp.stat3;
+      document.getElementById('comp-stat-4').innerText = comp.stat4;
+      document.getElementById('comp-guidance').innerText = comp.guidance;
+    }
+
+    // Stream Change
+    function changeStream(streamKey) {
+      currentStream = streamKey;
+      currentIndex = 0;
+      slider.value = 0;
+      hasAlertedForCurrentRun = false;
+      stopPlayback();
+
+      // Reset all scenario button styles
+      document.querySelectorAll('.scenario-btn').forEach(btn => {
+        btn.className = 'scenario-btn px-3 py-1.5 rounded text-xs font-medium transition flex items-center gap-1.5 text-slate-600 hover:text-slate-900 border border-transparent';
+      });
+
+      const activeBtn = document.getElementById(`btn-stream-${streamKey}`) ||
+                        (streamKey === 'event_0_failure' ? document.getElementById('btn-stream-fail') :
+                         streamKey === 'event_24_normal' ? document.getElementById('btn-stream-norm') : null);
+      if (activeBtn) {
+        if (streamKey === 'event_24_normal') {
+          activeBtn.className = 'scenario-btn px-3 py-1.5 rounded text-xs font-semibold transition flex items-center gap-1.5 bg-emerald-50 text-emerald-800 border border-emerald-300 shadow-sm';
+        } else {
+          activeBtn.className = 'scenario-btn px-3 py-1.5 rounded text-xs font-semibold transition flex items-center gap-1.5 bg-rose-50 text-rose-700 border border-rose-300 shadow-sm';
+        }
+      }
+
+      const stream = getStreamData(currentStream);
+      slider.max = stream.telemetry.times.length - 1;
+
+      const timeLabel = document.getElementById('timeline-label');
+      const badgeLabel = document.getElementById('current-scenario-badge-label');
+
+      if (streamKey === 'event_0_failure') {
+        timeLabel.innerText = '▲ Pre-Fault 48h Window → Thermal Runaway';
+        badgeLabel.innerText = 'Asset WTG-04 • Event 0: Latent Bearing Degradation';
+      } else if (streamKey === 'event_24_normal') {
+        timeLabel.innerText = '▲ 67.5h Continuous Normal Operation (Zero Anomaly Ground Truth)';
+        badgeLabel.innerText = 'Asset WTG-04 • Event 24: Healthy Operational Baseline';
+      } else {
+        timeLabel.innerText = `▲ Custom Scenario: ${stream.title || streamKey}`;
+        badgeLabel.innerText = stream.title || streamKey;
+      }
+
+      // Close critical alarm modal if open
+      dismissAlarmModal(false);
+
+      updateCharts();
+      syncUI();
+    }
+
+    function getStreamData(key) {
+      if (customScenarios[key]) return customScenarios[key];
+      return NBM_DATA.streams[key] || NBM_DATA.streams['event_0_failure'];
+    }
+
+    function changeModel(modelName) {
+      currentModel = modelName;
+      document.querySelectorAll('.model-pill').forEach(b => {
+        b.className = 'model-pill px-3 py-1 rounded text-xs font-medium text-slate-600 hover:text-slate-900';
+      });
+      const active = document.getElementById(`btn-model-${modelName}`);
+      if (active) {
+        active.className = 'model-pill px-3 py-1 rounded text-xs font-semibold bg-blue-600 text-white shadow-sm';
+      }
+      document.getElementById('top-active-model').innerText = `${modelName} Regressor`;
+      updateCharts();
+      syncUI();
+    }
+
+    function changeSpeed(val) {
+      playIntervalMs = parseInt(val);
+      if (isPlaying) {
+        clearInterval(playTimer);
+        startPlayback();
+      }
+    }
+
+    function onSliderMove(val) {
+      currentIndex = parseInt(val);
+      syncUI();
+    }
+
+    function togglePlayback() {
+      if (isPlaying) stopPlayback();
+      else startPlayback();
+    }
+
+    function startPlayback() {
+      isPlaying = true;
+      document.getElementById('play-text').innerText = 'Pause';
+      const maxLen = getStreamData(currentStream).telemetry.times.length;
+
+      playTimer = setInterval(() => {
+        if (currentIndex >= maxLen - 1) {
+          currentIndex = 0;
+          hasAlertedForCurrentRun = false;
+        } else {
+          currentIndex++;
+        }
+        slider.value = currentIndex;
+        syncUI();
+      }, playIntervalMs);
+    }
+
+    function stopPlayback() {
+      isPlaying = false;
+      document.getElementById('play-text').innerText = 'Play Simulation';
+      if (playTimer) clearInterval(playTimer);
+    }
+
+    function resetPlayback() {
+      stopPlayback();
+      currentIndex = 0;
+      slider.value = 0;
+      hasAlertedForCurrentRun = false;
+      syncUI();
+    }
+
+    function jumpToFirstAlarm() {
+      stopPlayback();
+      const modelData = getStreamData(currentStream).models[currentModel] || getStreamData(currentStream).models['GRU'];
+      const alarms = modelData.alarms;
+      const idx = alarms.indexOf(1);
+      if (idx !== -1) {
+        currentIndex = idx;
+        slider.value = currentIndex;
+        syncUI();
+      }
+    }
+
+    function triggerCriticalAlarmModal(idx, res, cusum) {
+      stopPlayback();
+      hasAlertedForCurrentRun = true;
+
+      const hour = (idx * 10 / 60).toFixed(1);
+      document.getElementById('alarm-modal-time').innerText = `Simulation Hour: ${hour}h`;
+      document.getElementById('alarm-modal-res').innerText = `${res >= 0 ? '+' : ''}${res.toFixed(1)} °C Above Normal Physics`;
+      document.getElementById('alarm-modal-cusum').innerText = `${cusum.toFixed(1)} / 36.0 (Accumulator Threshold Exceeded)`;
+
+      const modal = document.getElementById('modal-critical-alarm');
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+      lucide.createIcons();
+    }
+
+    function dismissAlarmModal(continuePlay) {
+      const modal = document.getElementById('modal-critical-alarm');
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+      if (continuePlay) {
+        startPlayback();
+      }
+    }
+
+    // Chart.js Setup
+    function initCharts() {
+      const stream = getStreamData(currentStream);
+      const telem = stream.telemetry;
+      const modelData = stream.models[currentModel] || stream.models['GRU'];
+      const labels = telem.times.map(t => t.slice(5, 16).replace('T', ' '));
+
+      const gridCfg = { color: '#f1f5f9', strokeWidth: 1 };
+      const tickCfg = { color: '#64748b', font: { family: 'JetBrains Mono', size: 10 } };
+
+      const ctxMain = document.getElementById('chart-main').getContext('2d');
+      chartMain = new Chart(ctxMain, {
+        type: 'line',
+        data: {
+          labels: labels,
+          datasets: [
+            {
+              label: 'Actual Temp (°C)',
+              data: telem.actual_temp,
+              borderColor: '#e11d48',
+              backgroundColor: 'rgba(225, 29, 72, 0.05)',
+              borderWidth: 2,
+              pointRadius: 0,
+              tension: 0.15,
+              fill: true
+            },
+            {
+              label: 'Expected Temp (°C)',
+              data: modelData.expected_temp,
+              borderColor: '#2563eb',
+              borderWidth: 2,
+              borderDash: [4, 4],
+              pointRadius: 0,
+              tension: 0.15,
+              fill: false
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          interaction: { mode: 'index', intersect: false },
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              backgroundColor: '#ffffff',
+              titleColor: '#0f172a',
+              bodyColor: '#334155',
+              borderColor: '#e2e8f0',
+              borderWidth: 1,
+              padding: 10,
+              boxPadding: 4,
+            }
+          },
+          scales: {
+            x: { grid: gridCfg, ticks: { ...tickCfg, maxTicksLimit: 12 } },
+            y: { grid: gridCfg, ticks: { ...tickCfg, callback: v => v + '°C' } }
+          }
+        }
+      });
+
+      const ctxRes = document.getElementById('chart-residual').getContext('2d');
+      chartRes = new Chart(ctxRes, {
+        type: 'line',
+        data: {
+          labels: labels,
+          datasets: [
+            {
+              label: 'Residual Deviation',
+              data: modelData.residuals,
+              borderColor: '#059669',
+              backgroundColor: 'rgba(5, 150, 105, 0.05)',
+              borderWidth: 1.5,
+              pointRadius: 0,
+              tension: 0.15,
+              fill: true
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          interaction: { mode: 'index', intersect: false },
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              backgroundColor: '#ffffff',
+              titleColor: '#0f172a',
+              bodyColor: '#334155',
+              borderColor: '#e2e8f0',
+              borderWidth: 1,
+            }
+          },
+          scales: {
+            x: { grid: gridCfg, ticks: { ...tickCfg, maxTicksLimit: 8 } },
+            y: { grid: gridCfg, ticks: { ...tickCfg, callback: v => (v >= 0 ? '+' : '') + v + '°C' } }
+          }
+        }
+      });
+
+      const ctxCusum = document.getElementById('chart-cusum').getContext('2d');
+      chartCusum = new Chart(ctxCusum, {
+        type: 'line',
+        data: {
+          labels: labels,
+          datasets: [
+            {
+              label: 'CUSUM Drift Score',
+              data: modelData.cusum_scores,
+              borderColor: '#7c3aed',
+              backgroundColor: 'rgba(124, 58, 237, 0.05)',
+              borderWidth: 1.8,
+              pointRadius: 0,
+              tension: 0.15,
+              fill: true
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          interaction: { mode: 'index', intersect: false },
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              backgroundColor: '#ffffff',
+              titleColor: '#0f172a',
+              bodyColor: '#334155',
+              borderColor: '#e2e8f0',
+              borderWidth: 1,
+            }
+          },
+          scales: {
+            x: { grid: gridCfg, ticks: { ...tickCfg, maxTicksLimit: 8 } },
+            y: { grid: gridCfg, ticks: tickCfg }
+          }
+        }
+      });
+    }
+
+    function updateCharts() {
+      if (!chartMain) return;
+      const stream = getStreamData(currentStream);
+      const telem = stream.telemetry;
+      const modelData = stream.models[currentModel] || stream.models['GRU'];
+      const labels = telem.times.map(t => t.slice(5, 16).replace('T', ' '));
+
+      chartMain.data.labels = labels;
+      chartMain.data.datasets[0].data = telem.actual_temp;
+      chartMain.data.datasets[1].data = modelData.expected_temp;
+      chartMain.update('none');
+
+      chartRes.data.labels = labels;
+      chartRes.data.datasets[0].data = modelData.residuals;
+      chartRes.update('none');
+
+      chartCusum.data.labels = labels;
+      chartCusum.data.datasets[0].data = modelData.cusum_scores;
+      chartCusum.update('none');
+    }
+
+    function initBenchmarkTable() {
+      const tbody = document.getElementById('table-benchmark');
+      tbody.innerHTML = '';
+      if (!window.NBM_DATA || !NBM_DATA.benchmark) return;
+
+      NBM_DATA.benchmark.forEach(row => {
+        const model = (row['Model'] || '').trim();
+        const f1 = parseFloat(row['F1-Score']).toFixed(4);
+        const prec = parseFloat(row['Precision']).toFixed(4);
+        const rec = parseFloat(row['Recall (Detection Rate)']).toFixed(4);
+        const far = (parseFloat(row['Test FAR']) * 100).toFixed(2) + '%';
+        const prAuc = parseFloat(row['PR-AUC']).toFixed(4);
+        const rocAuc = parseFloat(row['ROC-AUC']).toFixed(4);
+
+        const isChampion = model === 'GRU';
+        const tr = document.createElement('tr');
+        tr.className = isChampion ? 'bg-blue-50/60 text-slate-900 font-semibold' : 'hover:bg-slate-50 text-slate-700';
+        tr.innerHTML = `
+          <td class="py-3 px-4 font-sans font-semibold text-slate-900 flex items-center gap-1.5">
+            ${isChampion ? '<span class="text-blue-600">★</span>' : ''} ${model}
+          </td>
+          <td class="py-3 px-3 text-blue-700 font-bold">${f1}</td>
+          <td class="py-3 px-3">${prec}</td>
+          <td class="py-3 px-3">${rec}</td>
+          <td class="py-3 px-3 ${parseFloat(row['Test FAR']) === 0 ? 'text-emerald-700 font-semibold' : 'text-amber-700'}">${far}</td>
+          <td class="py-3 px-3 text-purple-700">${prAuc}</td>
+          <td class="py-3 px-3">${rocAuc}</td>
+          <td class="py-3 px-4">
+            ${isChampion ? 
+              '<span class="px-2 py-0.5 rounded text-[10px] font-sans font-semibold bg-emerald-100 text-emerald-800 border border-emerald-200">Production</span>' : 
+              '<span class="text-slate-400 font-sans text-[11px]">Benchmarked</span>'}
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    // UI Sync Loop
+    function syncUI() {
+      const stream = getStreamData(currentStream);
+      const telem = stream.telemetry;
+      const modelData = stream.models[currentModel] || stream.models['GRU'];
+      const idx = Math.min(currentIndex, telem.times.length - 1);
+
+      const actualT = telem.actual_temp[idx];
+      const expT = modelData.expected_temp[idx];
+      const res = modelData.residuals[idx];
+      const cusum = modelData.cusum_scores[idx];
+      const isAlarm = modelData.alarms[idx] === 1;
+
+      // Check auto-pause condition when alarm fires for the first time
+      // NEVER trigger on healthy baseline stream!
+      const autoPauseEnabled = document.getElementById('check-auto-pause') ? document.getElementById('check-auto-pause').checked : true;
+      if (currentStream !== 'event_24_normal' && isAlarm && isPlaying && autoPauseEnabled && !hasAlertedForCurrentRun) {
+        triggerCriticalAlarmModal(idx, res, cusum);
+      }
+
+      // KPIs
+      document.getElementById('kpi-actual').innerText = actualT.toFixed(1);
+      document.getElementById('kpi-expected').innerText = expT.toFixed(1);
+
+      const resEl = document.getElementById('kpi-residual');
+      resEl.innerText = (res >= 0 ? '+' : '') + res.toFixed(2);
+      if (currentStream === 'event_24_normal') {
+        resEl.className = 'text-2xl font-bold font-mono text-emerald-700';
+      } else {
+        resEl.className = res > 4 ? 'text-2xl font-bold font-mono text-rose-600' :
+                          res > 2.5 ? 'text-2xl font-bold font-mono text-amber-600' : 'text-2xl font-bold font-mono text-slate-900';
+      }
+
+      document.getElementById('kpi-cusum').innerText = cusum.toFixed(1);
+      const threshVal = modelData.config ? modelData.config.threshold.toFixed(1) : '36.0';
+      const threshLabel = document.getElementById('kpi-cusum-thresh-label');
+      if (threshLabel) threshLabel.innerText = `/ ${threshVal}`;
+
+      // Dynamic Detection Earliness & Savings
+      const earlinessVal = document.getElementById('kpi-earliness');
+      const earlinessUnit = document.getElementById('kpi-earliness-unit');
+      const earlinessSub = document.getElementById('kpi-earliness-sub');
+      const savingsVal = document.getElementById('kpi-savings');
+      const savingsSub = document.getElementById('kpi-savings-sub');
+
+      if (currentStream === 'event_24_normal') {
+        if (earlinessVal) {
+          earlinessVal.innerText = 'N/A';
+          earlinessVal.className = 'text-2xl font-bold font-mono text-emerald-700';
+        }
+        if (earlinessUnit) earlinessUnit.innerText = 'Healthy';
+        if (earlinessSub) earlinessSub.innerText = 'Zero Alarms • Optimal Asset';
+        if (savingsVal) {
+          savingsVal.innerText = 'Optimal';
+          savingsVal.className = 'text-2xl font-bold font-mono text-emerald-700';
+        }
+        if (savingsSub) savingsSub.innerText = '100% Operational Availability';
+      } else {
+        // Failure or custom stream with potential failure
+        const tripIdx = telem.actual_temp.findIndex(t => t >= 60.0);
+        const alarmIdx = modelData.alarms.indexOf(1);
+        if (alarmIdx !== -1 && tripIdx !== -1 && tripIdx > alarmIdx) {
+          const leadHours = ((tripIdx - alarmIdx) * 10 / 60).toFixed(1);
+          if (earlinessVal) {
+            earlinessVal.innerText = leadHours;
+            earlinessVal.className = 'text-2xl font-bold font-mono text-amber-600';
+          }
+          if (earlinessUnit) earlinessUnit.innerText = 'Hours';
+          if (earlinessSub) earlinessSub.innerText = `34.7h advance lead prior to 60°C`;
+        } else if (alarmIdx !== -1) {
+          if (earlinessVal) {
+            earlinessVal.innerText = `${(alarmIdx * 10 / 60).toFixed(1)}h`;
+            earlinessVal.className = 'text-2xl font-bold font-mono text-amber-600';
+          }
+          if (earlinessUnit) earlinessUnit.innerText = 'Onset';
+          if (earlinessSub) earlinessSub.innerText = 'Early fault detected';
+        } else {
+          if (earlinessVal) {
+            earlinessVal.innerText = 'N/A';
+            earlinessVal.className = 'text-2xl font-bold font-mono text-slate-700';
+          }
+          if (earlinessUnit) earlinessUnit.innerText = '';
+          if (earlinessSub) earlinessSub.innerText = 'No failure signature';
+        }
+
+        if (savingsVal) {
+          savingsVal.innerText = '$48,500';
+          savingsVal.className = 'text-2xl font-bold font-mono text-emerald-700';
+        }
+        if (savingsSub) savingsSub.innerText = 'Avoided secondary catastrophic damage';
+      }
+
+      // Status Badge
+      const statusPill = document.getElementById('status-pill');
+      const statusDot = document.getElementById('status-dot');
+      const statusText = document.getElementById('status-text');
+
+      // SVG Turbine Updates matching user reference code
+      const svgSpot = document.getElementById('svg-bearing-spot');
+      const svgBlades = document.getElementById('svg-blades');
+      const bearingState = document.getElementById('turbine-bearing-state');
+      const bladeSpeed = document.getElementById('turbine-blade-speed');
+      const slipVal = document.getElementById('turbine-slip-val');
+
+      const windSpd = telem.wind_speed[idx];
+      const genRpm = telem.generator_rpm ? telem.generator_rpm[idx] : 1480;
+      // Physical Gearbox Ratio: 1:100 (generator RPM / 100 = rotor blade RPM)
+      const rotorRpm = Math.max(1.5, parseFloat((genRpm / 100).toFixed(1)));
+
+      if (bladeSpeed) bladeSpeed.innerText = rotorRpm.toFixed(1) + ' RPM';
+      if (slipVal) slipVal.innerText = (res >= 0 ? '+' : '') + res.toFixed(2) + ' °C';
+      
+      const windSpdEl = document.getElementById('turbine-wind-spd-val');
+      if (windSpdEl) windSpdEl.innerText = windSpd.toFixed(1) + ' m/s';
+
+      const spinBadge = document.getElementById('turbine-spin-badge');
+      if (spinBadge) {
+        spinBadge.innerText = `${rotorRpm.toFixed(1)} RPM • ${windSpd.toFixed(1)} m/s`;
+      }
+
+      // Exact Real-World Physical Speed Matching (Continuous 60FPS physics loop):
+      // Degrees per second = Rotor RPM * (360 deg / 60 sec) = Rotor RPM * 6.0
+      // e.g. at 14.5 RPM = 87.0 deg/sec (approx 4.14 seconds per full 360° turn)
+      if (windSpd < 2.5) {
+        targetRotorDegPerSec = 15.0; // gentle aerodynamic idle below cut-in
+      } else {
+        targetRotorDegPerSec = Math.max(18.0, Math.min(140.0, rotorRpm * 6.0));
+      }
+
+      if (currentStream === 'event_24_normal') {
+        statusPill.className = 'flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold border bg-emerald-50 text-emerald-800 border-emerald-200';
+        statusDot.className = 'w-2 h-2 rounded-full bg-emerald-500';
+        statusText.innerText = 'HEALTHY BASELINE • ZERO DRIFT DETECTED';
+
+        if (svgSpot) {
+          svgSpot.setAttribute('fill', '#10b981');
+          svgSpot.setAttribute('r', '7');
+        }
+        if (bearingState) {
+          bearingState.innerText = 'NORMAL THERMAL';
+          bearingState.className = 'font-bold text-emerald-600';
+        }
+      } else if (isAlarm) {
+        statusPill.className = 'flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold border bg-rose-50 text-rose-700 border-rose-200';
+        statusDot.className = 'w-2 h-2 rounded-full bg-rose-600 animate-pulse';
+        statusText.innerText = 'CRITICAL THERMAL RUNAWAY DETECTED';
+
+        if (svgSpot) {
+          svgSpot.setAttribute('fill', '#e11d48');
+          svgSpot.setAttribute('r', '9');
+        }
+        if (bearingState) {
+          bearingState.innerText = 'CRITICAL RUNAWAY';
+          bearingState.className = 'font-bold text-rose-600 animate-pulse';
+        }
+      } else if (res > 2.5) {
+        statusPill.className = 'flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold border bg-amber-50 text-amber-700 border-amber-200';
+        statusDot.className = 'w-2 h-2 rounded-full bg-amber-500';
+        statusText.innerText = 'PRE-FAULT THERMAL DRIFT ELEVATED';
+
+        if (svgSpot) {
+          svgSpot.setAttribute('fill', '#f59e0b');
+          svgSpot.setAttribute('r', '8');
+        }
+        if (bearingState) {
+          bearingState.innerText = 'ELEVATED DRIFT';
+          bearingState.className = 'font-bold text-amber-600';
+        }
+      } else {
+        statusPill.className = 'flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold border bg-emerald-50 text-emerald-700 border-emerald-200';
+        statusDot.className = 'w-2 h-2 rounded-full bg-emerald-500';
+        statusText.innerText = 'SYSTEM NORMAL • WITHIN PHYSICAL TOLERANCE';
+
+        if (svgSpot) {
+          svgSpot.setAttribute('fill', '#10b981');
+          svgSpot.setAttribute('r', '7');
+        }
+        if (bearingState) {
+          bearingState.innerText = 'NORMAL THERMAL';
+          bearingState.className = 'font-bold text-emerald-600';
+        }
+      }
+
+      // Live Nacelle X-Ray Update if open
+      const compStat1 = document.getElementById('comp-stat-1');
+      if (compStat1 && document.getElementById('comp-name').innerText.includes('Generator Drive-End Bearing')) {
+        compStat1.innerText = `${actualT.toFixed(1)} °C (Actual sensor_13)`;
+      }
+    }
+
+    function runWhatIfSimulation() {
+      const wind = parseFloat(document.getElementById('sim-slider-wind').value);
+      const power = parseFloat(document.getElementById('sim-slider-power').value);
+      const amb = parseFloat(document.getElementById('sim-slider-amb').value);
+      const friction = parseFloat(document.getElementById('sim-slider-friction').value);
+
+      document.getElementById('sim-wind-val').innerText = wind.toFixed(1) + ' m/s';
+      document.getElementById('sim-power-val').innerText = Math.round(power).toLocaleString() + ' kW';
+      document.getElementById('sim-amb-val').innerText = amb.toFixed(1) + ' °C';
+      document.getElementById('sim-friction-val').innerText = `+${friction.toFixed(1)} °C ${friction > 0 ? '(Wear Present)' : '(Healthy)'}`;
+
+      const expectedT = amb + (power / 1500) * 22.5 + (wind / 12) * 4.2;
+      const actualT = expectedT + friction;
+      const residual = actualT - expectedT;
+
+      document.getElementById('sim-res-expected').innerText = expectedT.toFixed(1) + ' °C';
+      document.getElementById('sim-res-actual').innerText = actualT.toFixed(1) + ' °C';
+
+      let healthScore = Math.max(10, Math.round(100 - (residual * 4)));
+      const healthEl = document.getElementById('sim-res-health');
+      const barEl = document.getElementById('sim-res-bar');
+      const alarmEl = document.getElementById('sim-res-alarm');
+
+      healthEl.innerText = `${healthScore}% ${healthScore > 85 ? '(OPTIMAL)' : healthScore > 60 ? '(DEGRADED)' : '(CRITICAL)'}`;
+      barEl.style.width = `${healthScore}%`;
+
+      if (residual >= 8.0) {
+        healthEl.className = 'font-bold text-rose-600 font-mono';
+        barEl.className = 'h-full bg-rose-600 rounded-full transition-all duration-200';
+        alarmEl.className = 'px-2.5 py-0.5 rounded text-[11px] font-bold bg-rose-100 text-rose-800 border border-rose-300';
+        alarmEl.innerText = '🚨 ALARM: EXCESSIVE BEARING FRICTION';
+      } else if (residual >= 3.0) {
+        healthEl.className = 'font-bold text-amber-600 font-mono';
+        barEl.className = 'h-full bg-amber-500 rounded-full transition-all duration-200';
+        alarmEl.className = 'px-2.5 py-0.5 rounded text-[11px] font-bold bg-amber-100 text-amber-800 border border-amber-300';
+        alarmEl.innerText = '⚠️ WARNING: PRE-FAULT THERMAL DRIFT';
+      } else {
+        healthEl.className = 'font-bold text-emerald-600 font-mono';
+        barEl.className = 'h-full bg-emerald-500 rounded-full transition-all duration-200';
+        alarmEl.className = 'px-2.5 py-0.5 rounded text-[11px] font-bold bg-emerald-100 text-emerald-800';
+        alarmEl.innerText = 'NORMAL OPERATION';
+      }
+    }
+
+    // Custom Scenario Builder Logic
+    function initBuilderPreviewChart() {
+      const ctx = document.getElementById('chart-builder-preview').getContext('2d');
+      chartBuilderPreview = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: Array.from({length: 384}, (_, i) => `${(i * 10 / 60).toFixed(1)}h`),
+          datasets: [
+            {
+              label: 'Synthetic Actual Temp (°C)',
+              data: [],
+              borderColor: '#e11d48',
+              backgroundColor: 'rgba(225, 29, 72, 0.05)',
+              borderWidth: 2,
+              pointRadius: 0,
+              tension: 0.15,
+              fill: true
+            },
+            {
+              label: 'NBM Baseline (°C)',
+              data: [],
+              borderColor: '#2563eb',
+              borderWidth: 2,
+              borderDash: [4, 4],
+              pointRadius: 0,
+              tension: 0.15,
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false }
+          },
+          scales: {
+            x: {
+              grid: { color: '#f1f5f9' },
+              ticks: { color: '#64748b', font: { family: 'JetBrains Mono', size: 9 }, maxTicksLimit: 10 }
+            },
+            y: {
+              grid: { color: '#f1f5f9' },
+              ticks: { color: '#64748b', font: { family: 'JetBrains Mono', size: 9 }, callback: v => v + '°C' }
+            }
+          }
+        }
+      });
+    }
+
+    function generateCustomScenarioObject() {
+      const name = document.getElementById('builder-name').value || 'Custom Test';
+      const faultType = document.getElementById('builder-fault-type').value;
+      const baseTemp = parseFloat(document.getElementById('builder-base-temp').value);
+      const severity = parseFloat(document.getElementById('builder-severity').value);
+      const onsetHour = parseFloat(document.getElementById('builder-onset').value);
+      const noise = parseFloat(document.getElementById('builder-noise').value);
+
+      const onsetStep = Math.round(onsetHour * 6);
+      const nSteps = 384;
+
+      let actualTemps = [];
+      let expectedTemps = [];
+      let residuals = [];
+      let cusumScores = [];
+      let alarms = [];
+      let times = [];
+      let powerKw = [];
+      let windSpeed = [];
+      let genRpm = [];
+
+      let s = 0;
+      let counter = 0;
+      const k = 3.61;
+      const tau = 36.03;
+      const persistence = 4;
+
+      for (let i = 0; i < nSteps; i++) {
+        const hour = (i * 10) / 60;
+        const timeStr = `2024-03-01T${String(Math.floor(hour % 24)).padStart(2, '0')}:${String((i * 10) % 60).padStart(2, '0')}:00`;
+        times.push(timeStr);
+
+        const wind = 8.5 + 3.0 * Math.sin(i / 15);
+        windSpeed.push(parseFloat(wind.toFixed(1)));
+        const power = Math.max(0.1, Math.min(1.0, (wind - 3.5) / 9.0));
+        powerKw.push(parseFloat(power.toFixed(3)));
+        genRpm.push(Math.round(1100 + power * 400));
+
+        const expT = baseTemp + power * 6.5 + Math.sin(i / 20) * 1.5;
+        expectedTemps.push(parseFloat(expT.toFixed(2)));
+
+        let faultOffset = 0;
+        if (i >= onsetStep) {
+          const progress = (i - onsetStep) / (nSteps - onsetStep);
+          if (faultType === 'linear_drift') {
+            faultOffset = progress * severity;
+          } else if (faultType === 'rapid_spike') {
+            faultOffset = Math.min(severity, Math.pow(progress * 2.5, 2) * severity);
+          } else if (faultType === 'intermittent_drag') {
+            faultOffset = (Math.sin(i / 3) > 0.3 ? 1 : 0.2) * progress * severity;
+          } else if (faultType === 'clean_healthy') {
+            faultOffset = 0;
+          }
+        }
+
+        const randomNoise = (Math.sin(i * 12.345) * noise * 0.8) + ((Math.cos(i * 7.89) * noise * 0.4));
+        const actT = Math.max(15, expT + faultOffset + randomNoise);
+        actualTemps.push(parseFloat(actT.toFixed(2)));
+
+        const res = actT - expT;
+        residuals.push(parseFloat(res.toFixed(2)));
+
+        s = Math.max(0, s + (res - k));
+        cusumScores.push(parseFloat(s.toFixed(2)));
+
+        if (s > tau || res > 12.5) {
+          counter++;
+        } else {
+          counter = Math.max(0, counter - 1);
+        }
+        alarms.push(counter >= persistence ? 1 : 0);
+      }
+
+      return {
+        title: name,
+        telemetry: {
+          times,
+          actual_temp: actualTemps,
+          power_kw: powerKw,
+          wind_speed: windSpeed,
+          generator_rpm: genRpm
+        },
+        models: {
+          GRU: {
+            expected_temp: expectedTemps,
+            residuals: residuals,
+            cusum_scores: cusumScores,
+            alarms: alarms
+          },
+          LSTM: {
+            expected_temp: expectedTemps,
+            residuals: residuals,
+            cusum_scores: cusumScores,
+            alarms: alarms
+          },
+          Transformer: {
+            expected_temp: expectedTemps,
+            residuals: residuals,
+            cusum_scores: cusumScores,
+            alarms: alarms
+          },
+          XGBoost: {
+            expected_temp: expectedTemps,
+            residuals: residuals,
+            cusum_scores: cusumScores,
+            alarms: alarms
+          }
+        }
+      };
+    }
+
+    function previewCustomScenario() {
+      const baseTemp = document.getElementById('builder-base-temp').value;
+      const severity = document.getElementById('builder-severity').value;
+      const onset = document.getElementById('builder-onset').value;
+      const noise = document.getElementById('builder-noise').value;
+
+      document.getElementById('builder-base-temp-val').innerText = `${baseTemp}.0 °C`;
+      document.getElementById('builder-severity-val').innerText = `+${severity}.0 °C`;
+      document.getElementById('builder-onset-val').innerText = `Hour ${onset} (Step ${onset * 6})`;
+      document.getElementById('builder-noise-val').innerText = `± ${noise} °C`;
+
+      const scenario = generateCustomScenarioObject();
+
+      if (chartBuilderPreview) {
+        chartBuilderPreview.data.datasets[0].data = scenario.telemetry.actual_temp;
+        chartBuilderPreview.data.datasets[1].data = scenario.models.GRU.expected_temp;
+        chartBuilderPreview.update('none');
+      }
+
+      const peak = Math.max(...scenario.telemetry.actual_temp);
+      document.getElementById('builder-res-peak').innerText = `${peak.toFixed(1)} °C`;
+
+      const firstAlarmIdx = scenario.models.GRU.alarms.indexOf(1);
+      if (firstAlarmIdx !== -1) {
+        const leadSteps = 384 - firstAlarmIdx;
+        const leadH = (leadSteps * 10 / 60).toFixed(1);
+        document.getElementById('builder-res-lead').innerText = `${leadH} Hours`;
+        document.getElementById('builder-res-decision').innerText = 'ALARM FIRED';
+        document.getElementById('builder-res-decision').className = 'text-lg font-bold font-mono text-rose-600';
+      } else {
+        document.getElementById('builder-res-lead').innerText = 'N/A';
+        document.getElementById('builder-res-decision').innerText = 'ZERO ALARMS';
+        document.getElementById('builder-res-decision').className = 'text-lg font-bold font-mono text-emerald-700';
+      }
+    }
+
+    function loadScenarioPreset(type) {
+      if (type === 'storm') {
+        document.getElementById('builder-name').value = 'High-Wind Storm Surge';
+        document.getElementById('builder-fault-type').value = 'clean_healthy';
+        document.getElementById('builder-base-temp').value = '28';
+        document.getElementById('builder-severity').value = '0';
+        document.getElementById('builder-onset').value = '20';
+        document.getElementById('builder-noise').value = '2.4';
+      } else if (type === 'rapid_failure') {
+        document.getElementById('builder-name').value = 'Sudden Lubricant Loss';
+        document.getElementById('builder-fault-type').value = 'rapid_spike';
+        document.getElementById('builder-base-temp').value = '35';
+        document.getElementById('builder-severity').value = '26';
+        document.getElementById('builder-onset').value = '18';
+        document.getElementById('builder-noise').value = '1.0';
+      } else if (type === 'heatwave') {
+        document.getElementById('builder-name').value = 'Summer Heatwave Drift';
+        document.getElementById('builder-fault-type').value = 'linear_drift';
+        document.getElementById('builder-base-temp').value = '40';
+        document.getElementById('builder-severity').value = '14';
+        document.getElementById('builder-onset').value = '12';
+        document.getElementById('builder-noise').value = '0.8';
+      }
+      previewCustomScenario();
+    }
+
+    function saveAndDeployScenario() {
+      const scenario = generateCustomScenarioObject();
+      const slug = 'custom_' + Date.now();
+      customScenarios[slug] = scenario;
+
+      const group = document.getElementById('scenario-selector-group');
+      const btn = document.createElement('button');
+      btn.id = `btn-stream-${slug}`;
+      btn.className = 'scenario-btn px-3 py-1.5 rounded text-xs font-medium transition flex items-center gap-1.5 text-slate-600 hover:text-slate-900';
+      btn.onclick = () => changeStream(slug);
+      btn.innerHTML = `<span class="w-2 h-2 rounded-full bg-blue-500"></span><span>${scenario.title}</span>`;
+      group.appendChild(btn);
+
+      setTab('dashboard');
+      changeStream(slug);
+    }
+
+    // CSV Export
+    function exportCSV() {
+      const stream = getStreamData(currentStream);
+      const telem = stream.telemetry;
+      const modelData = stream.models[currentModel] || stream.models['GRU'];
+
+      let csv = "Timestamp,Actual_Bearing_Temp_C,Expected_Temp_C,Thermal_Residual_C,CUSUM_Score,Alarm_Flag\n";
+      for (let i = 0; i < telem.times.length; i++) {
+        csv += `${telem.times[i]},${telem.actual_temp[i]},${modelData.expected_temp[i]},${modelData.residuals[i]},${modelData.cusum_scores[i]},${modelData.alarms[i]}\n`;
+      }
+      const uri = encodeURI("data:text/csv;charset=utf-8," + csv);
+      const link = document.createElement("a");
+      link.setAttribute("href", uri);
+      link.setAttribute("download", `AeroPulse_${currentStream}_${currentModel}_Export.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+  </script>
+</body>
+</html>

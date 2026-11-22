@@ -1,0 +1,66 @@
+{
+  "feature_names": [
+    "status_type_id",
+    "sensor_0_avg",
+    "wind_speed_3_avg",
+    "sensor_1_avg",
+    "sensor_5_avg",
+    "sensor_11_avg",
+    "sensor_12_avg",
+    "sensor_13_avg",
+    "sensor_14_avg",
+    "sensor_15_avg",
+    "sensor_18_avg",
+    "sensor_52_avg",
+    "power_30_avg",
+    "sensor_31_avg",
+    "sensor_23_avg",
+    "sensor_32_avg",
+    "sensor_41_avg",
+    "temp_delta_gen",
+    "temp_delta_gearbox"
+  ],
+  "window_size": 72,
+  "stride": 6,
+  "balanced_sampling_ratio": 5,
+  "train_events": [
+    72,
+    73,
+    26,
+    40,
+    42,
+    10,
+    45,
+    84,
+    25,
+    13,
+    3,
+    17,
+    38,
+    71,
+    14,
+    51
+  ],
+  "test_events": [
+    0,
+    22,
+    68,
+    24,
+    69,
+    92
+  ],
+  "tuned_thresholds": {
+    "XGBoost": 0.0403,
+    "LSTM": 0.9368,
+    "GRU": 0.6762,
+    "TCN": 0.9598,
+    "Transformer": 0.8039
+  },
+  "training_durations_sec": {
+    "XGBoost": 0.69,
+    "LSTM": 25.2,
+    "GRU": 65.77,
+    "TCN": 113.39,
+    "Transformer": 98.15
+  }
+}
